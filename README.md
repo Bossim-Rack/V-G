@@ -10,3 +10,5 @@ Rooter.js gere le chargement des pages.
 
 
 Serveur symphony en local 
+
+symfony server:start
