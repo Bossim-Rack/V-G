@@ -1,0 +1,54 @@
+
+<nav class="navbar navbar-expand-lg" id="main-navbar">
+  <div class="container-fluid">
+
+    <!-- Logo -->
+    <a class="navbar-brand" href="/acceuil" onclick="route(event)">
+      Vite <span class="brand-accent">&amp;</span> Gourmand
+    </a>
+
+    <!-- Bouton burger (mobile) -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarContent">
+
+      <!-- Liens principaux -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="/acceuil" onclick="route(event)">Acceuil</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/menus" onclick="route(event)">Menus</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/contact" onclick="route(event)">Contact</a>
+        </li>
+      </ul>
+
+      <!-- Non connecter -->
+      <div class="d-flex align-items-center guest-only" id="guest-block">
+        <a href="/connexion" onclick="route(event)" class="btn btn-connexion">Connexion</a>
+      </div>
+
+      <!-- Client connecté -->
+      <ul class="navbar-nav align-items-lg-center d-none user-only" id="user-block">
+        <li class="nav-item">
+          <a class="nav-link" href="/profil" onclick="route(event)">Profil</a>
+        </li>
+          <li class="nav-item">
+              <button class="nav-link btn btn-link" id="btn-deconnexion" type="button">Déconnexion</button>
+          </li>
+        <li class="nav-item staff-only d-none">
+          <a class="nav-link" href="/tableau_de_bord" onclick="route(event)">tableau de bord</a>
+        </li>
+        <li class="nav-item">
+          <span class="user-avatar" id="user-initials">Initial</span>
+        </li>
+      </ul>
+
+    </div>
+  </div>
+  <script src = "../Assets/JS/header.js"></script>
+</nav>

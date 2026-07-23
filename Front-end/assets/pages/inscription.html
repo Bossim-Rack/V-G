@@ -1,0 +1,73 @@
+<section class="inscription-section py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-8 col-lg-6">
+
+        <div class="inscription-form">
+
+          <div class="inscription-header text-center py-3">
+            <h2 class="inscription-title">Inscription</h2>
+          </div>
+
+          <div class="inscription-body p-4">
+            <form id="inscriptionForm">
+
+              <div class="row g-3 mb-3">
+                <div class="col-6">
+                  <label for="nom" class="form-label">Nom :</label>
+                  <input type="text" id="ins-Nom" name="nom" class="form-control" required>
+                </div>
+                <div class="col-6">
+                  <label for="prenom" class="form-label">Prénom :</label>
+                  <input type="text" id="ins-PreNom" name="prenom" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="email" class="form-label">Adresse mail :</label>
+                <input type="email" id="ins-Email" name="email" class="form-control" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="telephone" class="form-label">N° téléphone :</label>
+                <input type="tel" id="ins-Telephone" name="telephone" class="form-control" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="adresse" class="form-label">Adresse (facultatif) :</label>
+                <input type="text" id="ins-Adresse" name="adresse" class="form-control" placeholder="Numéro, rue, ville, code postal">
+                <small class="text-muted">Elle pourra être utilisée pour pré-remplir vos futures commandes.</small>
+              </div>
+
+              <div class="mb-3">
+                <label for="Password" class="form-label">Mot de passe :</label>
+                <div class="contain-Password-input">
+                    <input type="password" id="ins-Password" name="Password" class="form-control" required>
+                    <button type="button" class="btn-hide-password" id="btn-hide-Password"><i class="bi bi-eye"></i></button>
+                </div>
+                <div id="strength-bar" class="ins-strength"> </div>
+
+              </div>
+
+              <div class="mb-4">
+                <label for="ConfirmPassword" class="form-label">Confirmer le mot de passe :</label>
+                <div class="contain-ConfirmPassword-input">
+                    <input type="password" id="ins-ConfirmPassword" name="ConfirmPassword" class="form-control" required>
+                    <button type="button" class="btn-hide-password" id="btn-hide-ConfirmPassword" ><i class="bi bi-eye"></i></button>
+                </div>
+
+              </div>
+
+              <div class="text-center">
+                <button type="button" class="btn btn-connexion btn-lg" id="btn-inscription-envoie">Inscription</button>
+              </div>
+
+            </form>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>

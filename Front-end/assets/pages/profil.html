@@ -1,0 +1,187 @@
+<section class="profil-section py-5">
+  <div class="container">
+
+    <!-- Bandeau identité -->
+    <div class="profil-banner profil-banner-plage mb-4 p-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <span class="user-avatar profil-avatar-lg" id="profil-initials">TD</span>
+        <div>
+          <h1 class="profil-name mb-1 h3" id="profil-fullname"></h1>
+          <span class="profil-role-badge" id="profil-role"></span>
+        </div>
+      </div>
+      <p class="profil-meta mb-0" id="profil-since">Membre depuis le 12/03/2026</p>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- Colonne gauche : navigation -->
+      <div class="col-12 col-lg-3">
+        <div class="profil-sidebar">
+          <ul class="profil-nav">
+            <li><button type="button" class="profil-nav-link active" data-target="infos"><i class="bi bi-person"></i> Mes informations personnelles</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="securite"><i class="bi bi-shield-lock"></i> Sécurité</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="commandes"><i class="bi bi-bag"></i> Mes commandes</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="avis"><i class="bi bi-star"></i> Mes avis</button></li>
+            <li><button type="button" class="profil-nav-link profil-nav-danger" data-target="suppression"><i class="bi bi-trash"></i> Supprimer mon compte</button></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Colonne droite : contenu de la section active -->
+      <div class="col-12 col-lg-9">
+
+        <!-- Panel : Mes informations personnelles -->
+        <div class="profil-card profil-panel" id="panel-infos">
+          <div class="profil-card-header py-3 px-4">
+            <h2 class="profil-card-title mb-0">Mes informations personnelles</h2>
+          </div>
+          <div class="profil-card-body p-4">
+            <form id="profilInfosForm">
+              <div class="row g-3 mb-3">
+                <div class="col-6">
+                  <label class="form-label">Nom :</label>
+                  <input type="text" id="profil-Nom" name="lastName" class="form-control" readonly>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Prénom :</label>
+                  <input type="text" id="profil-Prenom" name="firstName" class="form-control" readonly>
+                </div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-6">
+                  <!--<label class="form-label">Adresse mail :</label>
+                  <input type="email" id="profil-Email" name="email" class="form-control" readonly>
+
+                  Je veux pas modifier le mail -->
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Téléphone :</label>
+                  <input type="tel" id="profil-Telephone" name="telephone" class="form-control" readonly>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Adresse :</label>
+                <input type="text" id="profil-Adresse" name="adresse" class="form-control" placeholder="Numéro, rue, ville, code postal" readonly>
+                <small class="text-muted">Utilisée pour pré-remplir l'adresse de livraison lors de vos commandes.</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Allergies / régime :</label>
+                <input type="text" id="profil-Allergy" name="allergy" class="form-control" placeholder="Ex : sans gluten" readonly>
+              </div>
+              <div class="text-end">
+                <button type="button" id="btn-profil-toggle-infos" class="btn btn-connexion" data-mode="view">Modifier</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Panel : Sécurité -->
+        <div class="profil-card profil-panel d-none" id="panel-securite">
+          <div class="profil-card-header py-3 px-4">
+            <h2 class="profil-card-title mb-0">Sécurité</h2>
+          </div>
+          <div class="profil-card-body p-4">
+            <form id="profilPasswordForm">
+              <div class="mb-3">
+                <label class="form-label">Mot de passe actuel :</label>
+                <div class="contain-Password-input">
+                  <input type="password" id="profil-CurrentPassword" class="form-control">
+                  <button type="button" class="btn-hide-password" id="btn-hide-CurrentPassword"><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Nouveau mot de passe :</label>
+                <div class="contain-Password-input">
+                  <input type="password" id="profil-NewPassword" class="form-control">
+                  <button type="button" class="btn-hide-password" id="btn-hide-NewPassword"><i class="bi bi-eye"></i></button>
+                </div>
+                <div id="profil-strength-bar" class="ins-strength"></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirmer le nouveau mot de passe :</label>
+                <div class="contain-Password-input">
+                  <input type="password" id="profil-ConfirmNewPassword" class="form-control">
+                  <button type="button" class="btn-hide-password" id="btn-hide-ConfirmNewPassword"><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="text-end">
+                <button type="button" id="btn-profil-save-password" class="btn btn-connexion">Modifier le mot de passe</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Panel : Mes commandes -->
+        <div class="profil-card profil-panel d-none" id="panel-commandes">
+          <div class="profil-card-header py-3 px-4">
+            <h2 class="profil-card-title mb-0">Mes commandes</h2>
+          </div>
+          <div class="profil-card-body p-4" id="profil-commandes-list">
+            <p class="text-center profil-empty-hint mb-0">Chargement de vos commandes…</p>
+          </div>
+        </div>
+
+        <!-- Panel : Mes avis -->
+        <div class="profil-card profil-panel d-none" id="panel-avis">
+          <div class="profil-card-header py-3 px-4 d-flex justify-content-between align-items-center">
+            <h2 class="profil-card-title mb-0">Mes avis</h2>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge rounded-pill" style="background:var(--Sauge)" id="profil-avis-count">0</span>
+              <button type="button" class="btn btn-connexion btn-sm" id="ajouter-avis" data-bs-toggle="collapse" data-bs-target="#form-ajout-avis" aria-expanded="false" aria-controls="form-ajout-avis"><i class="bi bi-plus-lg" id="ajouter-avis-icon"></i> <span id="ajouter-avis-label">Ajouter un avis</span></button>
+            </div>
+          </div>
+          <div class="profil-card-body p-4">
+
+            <div class="collapse mb-4" id="form-ajout-avis">
+              <form id="avisAddForm" class="dash-add-form p-3">
+                <div class="mb-3">
+                  <label class="form-label" for="avis-note">Note :</label>
+                  <select id="avis-note" class="form-select" style="max-width:220px">
+                    <option value="5">★★★★★ (5/5)</option>
+                    <option value="4">★★★★☆ (4/5)</option>
+                    <option value="3">★★★☆☆ (3/5)</option>
+                    <option value="2">★★☆☆☆ (2/5)</option>
+                    <option value="1">★☆☆☆☆ (1/5)</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="avis-description">Votre commentaire :</label>
+                  <textarea id="avis-description" class="form-control" rows="3" maxlength="255" placeholder="Partagez votre expérience..."></textarea>
+                </div>
+                <p class="text-danger small mb-0 d-none" id="avis-add-error"></p>
+                <div class="text-end mt-2">
+                  <button type="button" class="btn btn-connexion" id="btn-save-avis">Publier mon avis</button>
+                </div>
+              </form>
+            </div>
+
+            <div id="profil-avis-list">
+              <!-- Une .avis-card par avis -->
+              <p class="text-center profil-empty-hint mb-0" id="profil-avis-empty">Vous n'avez pas encore laissé d'avis.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel : Supprimer mon compte -->
+        <div class="profil-card profil-panel d-none" id="panel-suppression">
+          <div class="profil-card-header py-3 px-4">
+            <h2 class="profil-card-title mb-0">Supprimer mon compte</h2>
+          </div>
+          <div class="profil-card-body p-4">
+            <div class="profil-danger-zone p-4">
+              <h3 class="profil-danger-title h6 mb-2">Cette action est définitive et irréversible</h3>
+              <p class="mb-3" style="color:var(--Encre)">Toutes tes informations personnelles, commandes et avis seront supprimés. Cette action ne peut pas être annulée.</p>
+              <div class="mb-3">
+                <label class="form-label" style="color:var(--Encre)">Tape <strong>SUPPRIMER</strong> pour confirmer :</label>
+                <input type="text" id="profil-confirm-delete" class="form-control" style="max-width:260px">
+              </div>
+              <button type="button" id="btn-profil-delete" class="btn btn-outline-danger">Supprimer définitivement mon compte</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>

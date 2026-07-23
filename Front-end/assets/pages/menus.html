@@ -1,0 +1,124 @@
+<section class="menus-section py-5">
+  <div class="container">
+
+    <!-- Bandeau titre + filtre -->
+    <div class="menus-banner mb-5">
+      <div class="menus-banner-title text-center py-3">
+        <h1>Nos menu</h1>
+      </div>
+      <div class="menus-banner-filtre text-center py-3">
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
+
+          <div>
+            <span class="filtre-label">THÈME</span>
+            <select id="filtre-theme" class="form-select w-auto d-inline-block ms-2">
+              <option value="">Tous les thèmes</option>
+            </select>
+          </div>
+
+          <div>
+            <span class="filtre-label">PRIX</span>
+            <span class="filtre-prix-valeurs ms-2" id="filtre-prix-valeurs">— € - — €</span>
+            <div class="filtre-prix-slider-wrap mt-1">
+              <div class="filtre-prix-track"></div>
+              <div class="filtre-prix-fill" id="filtre-prix-fill"></div>
+              <input type="range" id="filtre-prix-min" class="form-range filtre-prix-range" min="0" max="100" step="1" value="0">
+              <input type="range" id="filtre-prix-max" class="form-range filtre-prix-range" min="0" max="100" step="1" value="100">
+            </div>
+          </div>
+
+          <div>
+            <span class="filtre-label">ALLERGÈNE</span>
+            <select id="filtre-allergene" class="form-select w-auto d-inline-block ms-2">
+              <option value="">Aucun filtre</option>
+            </select>
+          </div>
+
+          <div>
+            <span class="filtre-label">RÉGIME ALIMENTAIRE</span>
+            <select id="filtre-regime-alimentaire" class="form-select w-auto d-inline-block ms-2">
+              <option value="">Tous les régimes</option>
+            </select>
+          </div>
+
+          <button type="button" id="btn-reinitialiser-filtres" class="btn btn-details">Réinitialiser</button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Grille des menus -->
+    <div class="row g-4" id="menus-grille">
+      <div class="col-12"><p class="text-center">Chargement des menus…</p></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Modale de détail d'un menu -->
+<div class="modal fade" id="menuDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="menuDetailModalTitre">Menu</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <img src="" alt="" class="menu-card-img mb-3 w-100" id="menuDetailModalPhoto">
+        <p id="menuDetailModalDescription"></p>
+        <p class="mb-1"><i class="bi bi-people-fill"></i> <span id="menuDetailModalMin"></span> personnes minimum</p>
+        <p class="mb-1"><strong>Prix :</strong> <span id="menuDetailModalPrix"></span> €/pers.</p>
+        <p class="mb-1"><strong>Stock restant :</strong> <span id="menuDetailModalStock"></span></p>
+        <p class="mb-1" id="menuDetailModalRegimesAlimentairesWrap"><strong>Régimes alimentaires :</strong> <span id="menuDetailModalRegimesAlimentaires"></span></p>
+        <p class="mb-1" id="menuDetailModalThemesWrap"><strong>Thèmes :</strong> <span id="menuDetailModalThemes"></span></p>
+        <p class="mb-1" id="menuDetailModalAllergenesWrap"><strong>Allergènes :</strong> <span id="menuDetailModalAllergenes"></span></p>
+        <p class="mb-0"><strong>Plats inclus :</strong> <span id="menuDetailModalPlats"></span></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-commander" id="btn-commander-depuis-details">Commander</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modale de commande -->
+<div class="modal fade" id="commandeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="commandeModalTitre">Commander un menu</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form id="commandeForm">
+          <div class="mb-3">
+            <label for="commande-date-prestation" class="form-label">Date de prestation :</label>
+            <input type="date" id="commande-date-prestation" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="commande-heure-livraison" class="form-label">Heure de livraison :</label>
+            <input type="time" id="commande-heure-livraison" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label for="commande-adresse" class="form-label">Adresse de livraison :</label>
+            <input type="text" id="commande-adresse" class="form-control" placeholder="Numéro, rue, ville, code postal" required>
+            <small class="text-muted" id="commande-adresse-info"></small>
+          </div>
+          <div class="mb-3">
+            <label for="commande-nombre-personne" class="form-label">Nombre de personnes :</label>
+            <input type="number" id="commande-nombre-personne" class="form-control" min="1" required>
+            <small class="text-muted" id="commande-min-personnes-info"></small>
+          </div>
+          <p class="mb-0"><strong>Prix estimé :</strong> <span id="commande-prix-estime"></span> €</p>
+          <small class="text-success d-none" id="commande-reduction-info"><i class="bi bi-tag-fill"></i> Réduction de 10% appliquée (5 personnes ou plus au-dessus du minimum).</small>
+          <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Frais de livraison non inclus dans cette estimation : 5€ + 0,59€/km. Le montant définitif vous sera confirmé séparément.</small>
+        </form>
+        <p class="text-danger d-none mt-3" id="commandeModalError"></p>
+        <p class="text-success d-none mt-3" id="commandeModalSuccess"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-commander" id="btn-confirmer-commande">Confirmer la commande</button>
+      </div>
+    </div>
+  </div>
+</div>

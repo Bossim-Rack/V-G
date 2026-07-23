@@ -1,0 +1,654 @@
+/* Variable */
+:root{
+  --Encre :#0F2E38 ;
+  --Petrol:#1B4B5A;
+  --Corail:#E8865A;
+  --Sauge:#7FA69C;
+  --Sable:#F2E8D5;
+  --Ecume:#FAF6EE;
+}
+
+body {
+  background-color: var(--Sable);
+}
+/* header  */
+.navbar {
+  font-family:'Fraunces', serif;
+  font-weight: 600;
+  font-size: large;
+  font-style: italic;
+}
+.navbar-nav {
+  text-align: center;
+  justify-content: center;
+  font-family: 'Fraunces';
+}
+.nav-link {
+  position: relative;
+  color: var(--Encre);
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--Corail);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.navbar {
+  background-color: var(--Ecume);
+  border-radius: 50px;
+  padding: 6px 6px;
+  margin: 6px;
+}
+.nav-link:hover {
+  color: var(--Corail);
+}
+
+.brand-accent {
+  color: var(--Corail);
+}
+
+.btn-connexion {
+  background-color: var(--Corail);
+  color: var(--ecume);
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.btn-connexion:hover {
+  background-color: var(--Encre);
+  color: var(--Corail);
+}
+
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #1f3140;
+  color: var(--Ecume);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Footer */
+
+.site-footer {
+  background-color: var(--Petrol);
+  color: var(--Ecume);
+  border-radius: 50px 50px 0px 0px;
+}
+
+.footer-title {
+  color: var(--Ecume);
+  font-weight: 600;
+}
+
+.footer-subtitle {
+  color: var(--Corail);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.footer-text {
+  color: var(--Ecume);
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.footer-link {
+  color: var(--Ecume);
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
+.footer-link:hover {
+  color: var(--Corail);
+}
+/* Acceuil */
+  /* HERO */
+  
+.hero-section {
+  font-family: 'Fraunces',serif;
+  min-height: 500px;
+  background-image: linear-gradient(rgba(15, 46, 56, 0.5), rgba(15, 46, 56, 0.5)), url("/Assets/images/Restaurant.jpg");
+  background-size: cover;
+  background-position: center;
+  color: var(--Ecume);
+}
+.hero-title {
+  font-size: 3rem;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  font-family: 'Fraunces', serif;
+}
+
+  /* INTRO */
+.intro-section {
+  font-family: 'Work sans', sans-serif;
+  background-color: var(--Sable);
+}
+
+.intro-text {
+  color: var(--Encre);
+  line-height: 1.6;
+}
+
+.intro-image {
+  width: 100%;
+  object-fit: cover;
+  border-radius: 50px;
+}
+
+/* SAVOIR FAIRE */
+.savoir-faire-section {
+  background-color: var(--Petrol);
+}
+
+.savoir-faire-title {
+  color: var(--sauge);
+  font-family: 'Fraunces', serif;
+}
+
+.savoir-card {
+  font-family: 'Work sans',sans-serif;
+  border: none;
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.savoir-card img {
+  height: 320px;
+  object-fit: cover;
+}
+
+.savoir-card .card-img-overlay {
+  background: linear-gradient(to top, rgba(15,46,56,0.85), transparent);
+  color: var(--Ecume);
+}
+
+.savoir-card .card-title {
+  font-family: 'fraunces',serif;
+}
+
+  /* AVIS */
+.avis-section {
+  background-color: var(--Sable);
+  font-family: 'Fraunces',serif;
+}
+
+.avis-card {
+  background-color: var(--Ecume);
+  border-radius: 8px;
+}
+
+.stars {
+  color: var(--Corail);
+  font-size: 1.3rem;
+}
+
+.avis-text {
+  color: var(--Encre);
+}
+
+/* Mentions légales */
+.site-ml {
+  font-family:'Work sans',sans-serif;
+}
+.title-mentions-legales {
+  font-family: 'Fraunces',serif;
+  font-size: 3rem;
+  color:var(--Encre);
+}
+.ml-section {
+  background-image: url('/assets/images/plage.jpg');
+  margin-bottom: 30px;
+}
+.title-infos-entreprise-ml {
+  text-decoration: underline;
+}
+.infos-entreprise-ml {
+  font-family: 'ibm',sans-serif;
+  gap: 10px;
+  display: flex;
+}
+.title-ml {
+  font-size:larger;
+  font-family: 'Work sans', sans-serif;
+  text-decoration: underline;
+  margin-bottom: 30px;
+  margin-top: 10px;
+
+}
+/* CVG */
+/* =======================================
+              Inscription 
+  ========================================*/
+
+.inscription-section {
+  background-color: var(--Sable);
+}
+
+.inscription-header {
+  background-color: var(--Petrol);
+}
+
+.inscription-title {
+  color: var(--Corail);
+  font-family: 'Fraunces', serif;
+  margin: 0;
+}
+
+.inscription-body .form-label {
+  color: var(--Encre);
+  font-weight: 500;
+}
+
+.inscription-body .form-control {
+  background-color: var(--Ecume);
+  border: none;
+  border-radius: 6px;
+}
+
+.inscription-body .form-control:focus {
+  background-color:var(--Ecume);
+  border: 1px solid var(--Corail);
+  box-shadow: 0 0 0 0.2rem rgba(232, 134, 90, 0.25);
+}
+.inscription-form {
+  background-color: var(--Ecume);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.form-control.valid {
+  border: 2px solid #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+  }
+
+.form-control.invalid {
+  border: 2px solid #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  }
+/* btn hide */
+.contain-Password-input,
+.contain-ConfirmPassword-input {
+  position: relative;
+}
+
+.contain-Password-input .form-control,
+.contain-ConfirmPassword-input .form-control {
+  padding-right: 45px; /* laisse la place au bouton à droite */
+}
+
+.btn-hide-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--Encre);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.btn-hide-password:hover {
+  color: var(--Corail);
+}
+/* strengh bar du mot de passe */
+.ins-strength {
+  height: 6px;
+  border-radius: 3px;
+  margin-top: 6px;
+  background-color:var(--Ecume);
+  transition: all 0.3s ease;
+}
+
+.ins-strength.s1 { background-color: #dc3545; width: 25%; }
+.ins-strength.s2 { background-color: #fd7e14; width: 50%; }
+.ins-strength.s3 { background-color: #ffc107; width: 75%; }
+.ins-strength.s4 { background-color: #28a745; width: 100%; }
+
+/* ================================
+            Connexion 
+================================*/
+.btn-redirection-inscription-form, .btn-cx-form {
+  background-color: var(--Corail);
+  color: var(--Ecume);
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  align-items: center;
+  justify-content: center;
+}
+.cx-header {
+  background-color: var(--Petrol);
+  border-radius: 12px 12px 0px 0px;
+}
+.btn-redirection-inscription-form:hover,.btn-cx-form:hover{
+  background-color: var(--Encre);
+  color: var(--Corail);
+}
+.cx-body{
+  font-family: "Fraunces", serif;
+  color: var(--Encre);
+}
+.cx-form {
+  background: var(--Ecume);
+  border-radius: 0px 0px 12px 12px;
+}
+/* =======================================
+              MENU
+  ========================================*/
+/* MENUS */
+.menus-section {
+  background-color: var(--Sable);
+}
+
+/* Bandeau titre + filtre */
+.menus-banner {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--Encre);
+}
+
+.menus-banner-title {
+  background-color: var(--Corail);
+}
+
+.menus-banner-title h1 {
+  color: var(--ecume);
+  font-family: 'Fraunces', serif;
+  text-decoration: underline;
+  margin: 0;
+}
+
+.menus-banner-filtre {
+  background-color: var(--Ecume);
+}
+
+.filtre-label {
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  color: var(--Encre);
+}
+
+/* Fourchette de prix : 2 curseurs Bootstrap (.form-range) superposés sur
+   une même piste. Astuce classique : la piste de chaque <input type="range">
+   est rendue transparente (seul le pouce reste visible/cliquable), et une
+   piste + un remplissage sont dessinés séparément en dessous. */
+.filtre-prix-valeurs {
+  color: var(--Encre);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.filtre-prix-slider-wrap {
+  position: relative;
+  width: 220px;
+  height: 20px;
+}
+
+.filtre-prix-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  background-color: var(--Sable);
+  border-radius: 2px;
+}
+
+.filtre-prix-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  background-color: var(--Corail);
+  border-radius: 2px;
+}
+
+.filtre-prix-range {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.filtre-prix-range::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+.filtre-prix-range::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+.filtre-prix-range::-moz-range-track {
+  background: transparent;
+}
+
+.filtre-prix-range::-moz-range-thumb {
+  pointer-events: auto;
+}
+
+/* Cartes menu */
+.menu-card {
+  background-color: var(--Ecume);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-card-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.menu-card-body {
+  background-color: var(--Sauge);
+  padding: 16px;
+  flex-grow: 1;
+}
+
+.menu-card-title {
+  color: var(--Petrol);
+  font-family: 'Fraunces', serif;
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.menu-card-text {
+  color: var(--Petrol);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.menu-card-footer {
+  background-color: var(--Sauge);
+  padding: 12px 16px;
+  border-top: 1px solid var(--Encre) ;
+}
+
+.menu-card-personnes {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--Encre);
+}
+
+.menu-card-prix {
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: var(--Encre);
+  font-weight: 600;
+}
+
+.btn-details {
+  background-color: var(--Corail);
+  color: var(--Ecume);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-family: monospace;
+  border: none;
+}
+
+.btn-details:hover {
+  background-color: var(--Petrol);
+  color: var(--Ecume);
+}
+
+.menu-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-commander {
+  background-color: var(--Petrol);
+  color: var(--Ecume);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-family: monospace;
+  border: none;
+}
+
+.btn-commander:hover {
+  background-color: var(--Corail);
+  color: var(--Ecume);
+}
+/* =======================================
+              PROFIL
+  ========================================*/
+.profil-section { font-family:'Work Sans', sans-serif; }
+
+.profil-banner { background-color: var(--Ecume); border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
+/* Bandeau nom/prénom/rôle (tableau de bord ET page profil client) : même
+   fond que le bandeau "Mentions légales" (voir .ml-section). */
+.profil-banner-plage {
+  background-image: url('/assets/images/plage.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.profil-avatar-lg { width:64px; height:64px; font-size:1.4rem; }
+.profil-name { font-family:'Fraunces', serif; color: var(--Encre); }
+.profil-role-badge { background-color: var(--Corail); color: var(--Ecume); border-radius:20px; padding:4px 14px; font-size:.8rem; font-weight:500; }
+.profil-meta { color: var(--Petrol); font-size:.85rem; font-family: monospace; }
+
+/* Sidebar de navigation */
+.profil-sidebar { background-color: var(--Ecume); border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,.08); }
+.profil-nav { list-style:none; margin:0; padding:0; }
+.profil-nav-link { display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; border-left:3px solid transparent; padding:14px 20px; font-family:'Work Sans', sans-serif; font-size:.95rem; color:var(--Encre); cursor:pointer; }
+.profil-nav-link i { font-size:1rem; width:18px; text-align:center; }
+.profil-nav-link:hover { background-color: var(--Sable); }
+.profil-nav-link.active { background-color: var(--Sable); border-left-color: var(--Corail); color: var(--Corail); font-weight:600; }
+.profil-nav-danger { color:#dc3545; }
+.profil-nav-danger:hover { background-color:#fdecea; }
+.profil-nav-danger.active { background-color:#fdecea; border-left-color:#dc3545; color:#dc3545; }
+
+/* Cartes de contenu */
+.profil-card { background-color: var(--Ecume); border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,.08); }
+.profil-card-header { background-color: var(--Petrol); }
+.profil-card-title { font-family:'Fraunces', serif; color: var(--Corail); font-size:1.2rem; }
+.profil-card-body .form-label { color: var(--Encre); font-weight:500; }
+.profil-card-body .form-control { background-color: var(--Ecume); border:1px solid rgba(15,46,56,.15); border-radius:6px; }
+.profil-card-body .form-control:focus { background-color: var(--Ecume); border:1px solid var(--Corail); box-shadow:0 0 0 .2rem rgba(232,134,90,.25); }
+.profil-avis-date { font-size:.75rem; color: var(--Petrol); font-family: monospace; }
+.profil-empty-hint { color: var(--Encre); font-style:italic; }
+
+/* Mes commandes */
+.commande-card { background-color: var(--Sable); border-radius:8px; }
+.commande-menu { color: var(--Petrol); font-weight:600; }
+.commande-details { color: var(--Encre); font-size:.85rem; }
+.commande-prix { color: var(--Encre); font-weight:700; font-family: monospace; }
+.profil-statut { border-radius:20px; padding:4px 12px; font-size:.75rem; font-weight:600; }
+.profil-statut-confirmee { background-color:#28a745; color:#fff; }
+.profil-statut-attente { background-color: var(--Corail); color:#fff; }
+.profil-statut-annulee { background-color:#dc3545; color:#fff; }
+.profil-statut-terminee { background-color: var(--Petrol); color:#fff; }
+
+/* Suppression de compte */
+.profil-danger-zone { border:1px dashed #dc3545; border-radius:12px; }
+.profil-danger-title { color:#dc3545; font-family:'Fraunces', serif; }
+.profil-card-body .form-control[readonly] {
+  background-color: var(--Sable);
+  border-color: transparent;
+  color: var(--Petrol);
+  cursor: default;
+}
+/* =======================================
+              dash-board
+  ========================================*/
+.dash-stat-card { background-color: var(--Ecume); border-radius:12px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,.08); display:flex; align-items:center; gap:14px; }
+.dash-stat-icon { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.3rem; background-color: var(--Sable); color: var(--Corail); flex-shrink:0; }
+.dash-stat-value { font-family:'Fraunces', serif; font-size:1.6rem; color: var(--Encre); line-height:1; margin-bottom:2px; }
+.dash-stat-label { color: var(--Petrol); font-size:.8rem; }
+
+.dash-table { width:100%; border-collapse:separate; border-spacing:0 8px; }
+.dash-table thead th { font-family:'Work Sans', sans-serif; font-size:.75rem; text-transform:uppercase; letter-spacing:.5px; color: var(--Petrol); border:none; padding:0 14px 6px; }
+.dash-table tbody tr { background-color: var(--Sable); }
+.dash-table tbody td { padding:12px 14px; color: var(--Encre); font-size:.9rem; vertical-align:middle; border:none; }
+.dash-table tbody tr td:first-child { border-radius:8px 0 0 8px; }
+.dash-table tbody tr td:last-child { border-radius:0 8px 8px 0; text-align:right; }
+
+.dash-role-badge { border-radius:20px; padding:3px 12px; font-size:.75rem; font-weight:600; }
+.dash-role-client { background-color: var(--Sauge); color: var(--Encre); }
+.dash-role-employe { background-color: var(--Petrol); color:#fff; }
+.dash-role-admin { background-color: var(--Corail); color:#fff; }
+
+.dash-avis-statut { border-radius:20px; padding:3px 12px; font-size:.75rem; font-weight:600; }
+.dash-avis-attente { background-color: var(--Corail); color:#fff; }
+.dash-avis-publie { background-color:#28a745; color:#fff; }
+.dash-avis-refuse { background-color:#dc3545; color:#fff; }
+
+.dash-icon-btn { background:none; border:none; color: var(--Petrol); font-size:1rem; padding:4px 6px; cursor:pointer; }
+.dash-icon-btn:hover { color: var(--Corail); }
+.dash-icon-btn.danger:hover { color:#dc3545; }
+
+.dash-table-btn { background-color: var(--Ecume); border:1px solid var(--Petrol); color: var(--Petrol); border-radius:20px; padding:4px 16px; font-size:.8rem; font-weight:500; }
+.dash-table-btn:hover { background-color: var(--Petrol); color: var(--Ecume); }
+
+.profil-card-body .form-select { background-color: var(--Ecume); border:1px solid rgba(15,46,56,.15); border-radius:6px; }
+.profil-card-body .form-select:focus { background-color: var(--Ecume); border:1px solid var(--Corail); box-shadow:0 0 0 .2rem rgba(232,134,90,.25); }
+.profil-card-body .form-control[readonly], .profil-card-body .form-select:disabled { background-color: var(--Sable); color: var(--Petrol); cursor:default; opacity:1; }
+.profil-danger-zone { border:1px dashed #dc3545; border-radius:12px; }
+.profil-danger-title { color:#dc3545; font-family:'Fraunces', serif; }
+
+.dash-checkbox-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:8px 16px; background-color: var(--Sable); border-radius:8px; padding:14px 16px; }
+.dash-checkbox-list .form-check-input:checked { background-color: var(--Corail); border-color: var(--Corail); }
+.dash-checkbox-list .form-check-label { color: var(--Encre); font-size:.9rem; }
+
+.dash-photo-preview { width:120px; height:120px; object-fit:cover; border-radius:12px; background-color: var(--Sable); border:1px solid rgba(15,46,56,.15); }
+
+.dash-add-form { background-color: var(--Sable); border-radius:8px; }
+.dash-add-form .form-label { color: var(--Encre); font-weight:500; font-size:.85rem; }
+
+.dash-section-title { font-family:'Fraunces', serif; color: var(--Encre); font-size:1.1rem; }

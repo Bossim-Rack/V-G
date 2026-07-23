@@ -1,0 +1,547 @@
+<section class="profil-section py-5">
+  <div class="container-xl">
+
+    <div class="profil-banner profil-banner-plage mb-4 p-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <span class="user-avatar profil-avatar-lg" id="profil-initials"></span>
+        <div>
+          <h1 class="profil-name mb-1 h3" id="profil-fullname"></h1>
+          <span class="profil-role-badge" id="profil-role"></span>
+        </div>
+      </div>
+      <p class="profil-meta mb-0">Vite &amp; Gourmand — gestion de l'établissement</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-12 col-lg-3">
+        <div class="profil-sidebar">
+          <ul class="profil-nav">
+            <li><button type="button" class="profil-nav-link active" data-target="overview"><i class="bi bi-speedometer2"></i> Vue d'ensemble</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="commandes"><i class="bi bi-bag"></i> Commandes</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="menus"><i class="bi bi-journal-richtext"></i> Menus</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="plats"><i class="bi bi-egg-fried"></i> Plats</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="avis"><i class="bi bi-star"></i> Avis</button></li>
+            <li><button type="button" class="profil-nav-link" data-target="etablissement"><i class="bi bi-shop"></i> Établissement</button></li>
+            <li id="nav-item-utilisateurs" class="d-none"><button type="button" class="profil-nav-link" data-target="utilisateurs"><i class="bi bi-people"></i> Utilisateurs</button></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-9">
+
+        <div class="profil-panel" id="panel-overview">
+
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-xl-3">
+              <div class="dash-stat-card">
+                <span class="dash-stat-icon"><i class="bi bi-bag"></i></span>
+                <div>
+                  <p class="dash-stat-value mb-0" id="stat-commandes-attente">—</p>
+                  <p class="dash-stat-label mb-0">Commandes en attente</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-xl-3">
+              <div class="dash-stat-card">
+                <span class="dash-stat-icon"><i class="bi bi-currency-euro"></i></span>
+                <div>
+                  <p class="dash-stat-value mb-0" id="stat-ca-mois">—</p>
+                  <p class="dash-stat-label mb-0">CA du mois</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-xl-3">
+              <div class="dash-stat-card">
+                <span class="dash-stat-icon"><i class="bi bi-star"></i></span>
+                <div>
+                  <p class="dash-stat-value mb-0" id="stat-avis-attente">—</p>
+                  <p class="dash-stat-label mb-0">Avis à modérer</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-xl-3">
+              <div class="dash-stat-card">
+                <span class="dash-stat-icon"><i class="bi bi-people"></i></span>
+                <div>
+                  <p class="dash-stat-value mb-0" id="stat-clients-inscrits">—</p>
+                  <p class="dash-stat-label mb-0">Clients inscrits</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="profil-card">
+            <div class="profil-card-header py-3 px-4">
+              <h2 class="profil-card-title mb-0">Dernières commandes</h2>
+            </div>
+            <div class="profil-card-body p-4" id="dernieres-commandes-liste">
+              <p class="text-center profil-empty-hint mb-0">Chargement des commandes…</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="profil-panel d-none" id="panel-commandes">
+          <div id="commandes-list-view" class="profil-card">
+            <div class="profil-card-header py-3 px-4">
+              <h2 class="profil-card-title mb-0">Commandes</h2>
+            </div>
+            <div class="profil-card-body p-4">
+              <div class="table-responsive">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Menu</th>
+                      <th>Client</th>
+                      <th>Adresse</th>
+                      <th>Prestation</th>
+                      <th>Personnes</th>
+                      <th>Prix</th>
+                      <th>Statut</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="commandes-tbody">
+                    <tr><td colspan="8" class="profil-empty-hint">Chargement des commandes…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="commande-detail-view" class="d-none">
+
+            <button type="button" class="btn btn-sm dash-table-btn mb-3" id="btn-back-to-commandes"><i class="bi bi-arrow-left"></i> Retour à la liste</button>
+
+            <div class="profil-card">
+              <div class="profil-card-header py-3 px-4">
+                <h2 class="profil-card-title mb-0">Modifier la commande</h2>
+              </div>
+              <div class="profil-card-body p-4">
+                <form id="commandeDetailForm">
+                  <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6">
+                      <label class="form-label">Menu :</label>
+                      <p class="mb-0" id="detail-commande-menu">—</p>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label">Client :</label>
+                      <p class="mb-0" id="detail-commande-client">—</p>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Adresse de livraison :</label>
+                      <p class="mb-0" id="detail-commande-adresse">—</p>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <label class="form-label">Prestation :</label>
+                      <p class="mb-0" id="detail-commande-date">—</p>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <label class="form-label">Personnes :</label>
+                      <p class="mb-0" id="detail-commande-personnes">—</p>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">Prix :</label>
+                      <p class="mb-0" id="detail-commande-prix">—</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <label class="form-label">Statut :</label>
+                    <select id="detail-commande-statut" class="form-select">
+                      <option value="En attente">En attente</option>
+                      <option value="Confirmée">Confirmée</option>
+                      <option value="Terminée">Terminée</option>
+                      <option value="Annulée">Annulée</option>
+                    </select>
+                  </div>
+                  <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-connexion" id="btn-save-commande">Enregistrer les changements</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="profil-panel d-none" id="panel-menus">
+
+          <div id="menus-list-view">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h2 class="dash-section-title mb-0">Menus</h2>
+              <button type="button" class="btn btn-connexion btn-sm" id="btn-add-menu"><i class="bi bi-plus-lg"></i> Ajouter un menu</button>
+            </div>
+            <div class="row g-4" id="menus-list">
+              <div class="col-12"><p class="profil-empty-hint mb-0">Chargement des menus…</p></div>
+            </div>
+          </div>
+
+          <div id="menu-detail-view" class="d-none">
+
+            <button type="button" class="btn btn-sm dash-table-btn mb-3" id="btn-back-to-menus"><i class="bi bi-arrow-left"></i> Retour à la liste</button>
+
+            <div class="profil-card">
+              <div class="profil-card-header py-3 px-4">
+                <h2 class="profil-card-title mb-0" id="menu-detail-title">Modifier le menu</h2>
+              </div>
+              <div class="profil-card-body p-4">
+                <form id="menuDetailForm">
+                  <div class="mb-3">
+                    <label class="form-label">Titre du menu :</label>
+                    <input type="text" id="detail-menu-titre" class="form-control">
+                  </div>
+                  <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-4">
+                      <label class="form-label">Personnes minimum :</label>
+                      <input type="number" id="detail-menu-min" class="form-control" min="1">
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <label class="form-label">Prix / personne (€) :</label>
+                      <input type="number" id="detail-menu-prix" class="form-control" min="0" step="0.01">
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">Quantité restante :</label>
+                      <input type="number" id="detail-menu-quantite" class="form-control" min="0">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Photo :</label>
+                    <div class="d-flex align-items-center gap-3">
+                      <img src="" alt="Photo du menu" class="dash-photo-preview" id="detail-menu-photo-preview">
+                      <div>
+                        <input type="file" class="form-control form-control-sm mb-2" accept="image/*" id="detail-menu-photo-input" style="max-width:260px">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Plats inclus :</label>
+                    <div class="dash-checkbox-list" id="menu-plats-list">
+                      <p class="profil-empty-hint mb-0">Chargement des plats…</p>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Thèmes :</label>
+                    <div class="d-flex gap-2 mb-2">
+                      <input type="text" id="menu-theme-recherche" class="form-control form-control-sm" placeholder="Rechercher un thème…">
+                      <button type="button" class="btn btn-sm btn-outline-primary d-none text-nowrap" id="btn-creer-theme">Créer ce thème</button>
+                    </div>
+                    <div class="dash-checkbox-list" id="menu-themes-list">
+                      <p class="profil-empty-hint mb-0">Chargement des thèmes…</p>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Régimes alimentaires :</label>
+                    <div class="d-flex gap-2 mb-2">
+                      <input type="text" id="menu-regime-recherche" class="form-control form-control-sm" placeholder="Rechercher un régime…">
+                      <button type="button" class="btn btn-sm btn-outline-primary d-none text-nowrap" id="btn-creer-regime">Créer ce régime</button>
+                    </div>
+                    <div class="dash-checkbox-list" id="menu-regimes-list">
+                      <p class="profil-empty-hint mb-0">Chargement des régimes…</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <label class="form-label">Description :</label>
+                    <textarea id="detail-menu-description" class="form-control" rows="4"></textarea>
+                  </div>
+                  <div class="mb-3 text-danger d-none" id="menu-detail-error"></div>
+                  <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="btn-delete-menu">Supprimer le menu</button>
+                    <button type="button" class="btn btn-connexion" id="btn-save-menu">Enregistrer les changements</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!--plat-->
+        <div class="profil-panel d-none" id="panel-plats">
+
+          <div id="plats-list-view" class="profil-card">
+            <div class="profil-card-header py-3 px-4 d-flex justify-content-between align-items-center">
+              <h2 class="profil-card-title mb-0">Plats</h2>
+              <button type="button" class="btn btn-connexion btn-sm" id="btn-add-plat"><i class="bi bi-plus-lg"></i> Ajouter un plat</button>
+            </div>
+            <div class="profil-card-body p-4">
+              <div class="table-responsive">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Nom du plat</th>
+                      <th>Allergènes</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="plats-tbody">
+                    <tr><td colspan="3" class="profil-empty-hint">Chargement des plats…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vue détail d'un plat  -->
+          <div id="plat-detail-view" class="d-none">
+
+            <button type="button" class="btn btn-sm dash-table-btn mb-3" id="btn-back-to-plats"><i class="bi bi-arrow-left"></i> Retour à la liste</button>
+
+            <div class="profil-card">
+              <div class="profil-card-header py-3 px-4">
+                <h2 class="profil-card-title mb-0" id="plat-detail-title">Modifier le plat</h2>
+              </div>
+              <div class="profil-card-body p-4">
+                <form id="platDetailForm">
+                  <div class="mb-3">
+                    <label class="form-label">Titre :</label>
+                    <input type="text" id="detail-plat-titre" class="form-control">
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Photo :</label>
+                    <div class="d-flex align-items-center gap-3">
+                      <img src="" alt="Photo du plat" class="dash-photo-preview" id="detail-plat-photo-preview">
+                      <div>
+                        <input type="file" class="form-control form-control-sm mb-2" accept="image/*" id="detail-plat-photo-input" style="max-width:260px">
+                        <button type="button" class="btn btn-sm btn-outline-danger">Supprimer la photo</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Allergènes :</label>
+                    <div class="dash-checkbox-list" id="plat-allergenes-list">
+                      <p class="profil-empty-hint mb-0">Chargement des allergènes…</p>
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <label class="form-label">Description :</label>
+                    <textarea id="detail-plat-description" class="form-control" rows="4"></textarea>
+                  </div>
+
+                  <div class="mb-3 text-danger d-none" id="plat-detail-error"></div>
+
+                  <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="btn-delete-plat">Supprimer</button>
+                    <button type="button" class="btn btn-connexion" id="btn-save-plat">Enregistrer</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="profil-card profil-panel d-none" id="panel-avis">
+          <div class="profil-card-header py-3 px-4">
+            <h2 class="profil-card-title mb-0">Avis à modérer</h2>
+          </div>
+          <div class="profil-card-body p-4" id="avis-liste">
+            <p class="text-center profil-empty-hint mb-0">Chargement des avis…</p>
+          </div>
+        </div>
+
+        <div class="profil-panel d-none" id="panel-etablissement">
+
+          <div class="profil-card mb-4">
+            <div class="profil-card-header py-3 px-4">
+              <h2 class="profil-card-title mb-0">Informations générales</h2>
+            </div>
+            <div class="profil-card-body p-4">
+              <form>
+                <div class="mb-3">
+                  <label class="form-label">Nom de l'établissement :</label>
+                  <input type="text" class="form-control" value="Vite &amp; Gourmand">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description :</label>
+                  <textarea class="form-control" rows="3">Traiteur de la mer, spécialiste de l'événementiel.</textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Nombre de convives maximum :</label>
+                  <input type="number" class="form-control" value="150" style="max-width:200px">
+                </div>
+                <div class="text-end">
+                  <button type="button" class="btn btn-connexion">Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="profil-card">
+            <div class="profil-card-header py-3 px-4 d-flex justify-content-between align-items-center">
+              <h2 class="profil-card-title mb-0">Horaires d'ouverture</h2>
+              <button type="button" class="btn btn-connexion btn-sm" id="ajouter-horaire" data-bs-toggle="collapse" data-bs-target="#form-ajout-horaire" aria-expanded="false" aria-controls="form-ajout-horaire"><i class="bi bi-plus-lg" id="ajouter-horaire-icon"></i> <span id="ajouter-horaire-label">Ajouter</span></button>
+            </div>
+            <div class="profil-card-body p-4">
+
+              <div class="collapse mb-4" id="form-ajout-horaire">
+                <form id="horaireAddForm" class="dash-add-form p-3">
+                  <p class="dash-section-title mb-3" id="horaire-form-title">Ajouter un horaire</p>
+                  <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label" for="horaire-jour">Jour :</label>
+                      <select id="horaire-jour" class="form-select">
+                        <option value="Lundi">Lundi</option>
+                        <option value="Mardi">Mardi</option>
+                        <option value="Mercredi">Mercredi</option>
+                        <option value="Jeudi">Jeudi</option>
+                        <option value="Vendredi">Vendredi</option>
+                        <option value="Samedi">Samedi</option>
+                        <option value="Dimanche">Dimanche</option>
+                      </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <label class="form-label" for="horaire-ouverture">Ouverture :</label>
+                      <input type="time" id="horaire-ouverture" class="form-control" value="09:00">
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <label class="form-label" for="horaire-fermeture">Fermeture :</label>
+                      <input type="time" id="horaire-fermeture" class="form-control" value="18:00">
+                    </div>
+                    <div class="col-12 col-md-2">
+                      <button type="button" class="btn btn-connexion w-100" id="btn-save-horaire">Enregistrer</button>
+                    </div>
+                  </div>
+                  <p class="text-danger small mb-0 mt-2 d-none" id="horaire-add-error"></p>
+                </form>
+              </div>
+
+              <div class="table-responsive">
+                <table class="dash-table">
+                  <thead><tr><th>Jour</th><th>Horaire</th><th></th></tr></thead>
+                  <tbody id="horaires-tbody">
+                    <tr><td colspan="3" class="profil-empty-hint">Chargement des horaires…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profil-panel d-none" id="panel-utilisateurs">
+
+          <div id="users-list-view">
+
+            <div class="profil-card mb-4">
+              <div class="profil-card-header py-3 px-4">
+                <h2 class="profil-card-title mb-0">Créer un compte employé</h2>
+              </div>
+              <div class="profil-card-body p-4">
+                <form id="employeAddForm">
+                  <div class="row g-3 mb-3">
+                    <div class="col-6">
+                      <label class="form-label">Prénom :</label>
+                      <input type="text" id="employe-prenom" class="form-control" placeholder="Sacha">
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Nom :</label>
+                      <input type="text" id="employe-nom" class="form-control" placeholder="Martin">
+                    </div>
+                  </div>
+                  <div class="row g-3 mb-3">
+                    <div class="col-6">
+                      <label class="form-label">Email :</label>
+                      <input type="email" id="employe-email" class="form-control" placeholder="sacha.martin@vitegourmand.fr">
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Mot de passe :</label>
+                      <input type="password" id="employe-password" class="form-control" placeholder="········">
+                    </div>
+                  </div>
+                  <p class="text-danger small mb-0 d-none" id="employe-add-error"></p>
+                  <div class="text-end mt-2">
+                    <button type="button" class="btn btn-connexion" id="btn-create-employe">Créer l'employé</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="profil-card">
+              <div class="profil-card-header py-3 px-4">
+                <h2 class="profil-card-title mb-0">Tous les comptes</h2>
+              </div>
+              <div class="profil-card-body p-4">
+                <div class="table-responsive">
+                  <table class="dash-table">
+                    <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th></th></tr></thead>
+                    <tbody id="users-tbody">
+                      <tr><td colspan="4" class="profil-empty-hint">Chargement des comptes…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="user-detail-view" class="d-none">
+
+            <button type="button" class="btn btn-sm dash-table-btn mb-3" id="btn-back-to-users"><i class="bi bi-arrow-left"></i> Retour à la liste</button>
+
+            <div class="profil-banner mb-4 p-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+              <div class="d-flex align-items-center gap-3">
+                <span class="user-avatar profil-avatar-lg" id="detail-user-initials">CC</span>
+                <div>
+                  <h2 class="profil-name mb-1 h4" id="detail-user-name">Camille Client</h2>
+                  <span class="profil-role-badge" id="detail-user-role-badge">Client</span>
+                </div>
+              </div>
+              <p class="profil-meta mb-0" id="detail-user-since">Membre depuis le 03/01/2026</p>
+            </div>
+
+            <div class="profil-card mb-4">
+              <div class="profil-card-header py-3 px-4">
+                <h2 class="profil-card-title mb-0">Informations du compte</h2>
+              </div>
+              <div class="profil-card-body p-4">
+                <form id="userDetailForm">
+                  <div class="row g-3 mb-3">
+                    <div class="col-6">
+                      <label class="form-label">Prénom :</label>
+                      <input type="text" id="detail-Prenom" class="form-control" value="Camille" readonly>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Nom :</label>
+                      <input type="text" id="detail-Nom" class="form-control" value="Client" readonly>
+                    </div>
+                  </div>
+                  <div class="row g-3 mb-3">
+                    <div class="col-6">
+                      <label class="form-label">Email :</label>
+                      <input type="email" id="detail-Email" class="form-control" value="client@test.fr" readonly>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Téléphone :</label>
+                      <input type="tel" id="detail-Telephone" class="form-control" value="0612345678" readonly>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Rôle :</label>
+                    <select id="detail-Role" class="form-select" disabled style="max-width:260px">
+                      <option>Client</option>
+                      <option>Employé</option>
+                      <option>Admin</option>
+                    </select>
+                  </div>
+                  <div class="text-end">
+                    <button type="button" id="btn-toggle-user-detail" class="btn btn-connexion" data-mode="view">Modifier</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="profil-danger-zone p-4 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+              <div>
+                <h3 class="profil-danger-title h6 mb-1">Supprimer ce compte</h3>
+                <p class="mb-0 small" style="color:var(--Encre)">Action définitive et irréversible.</p>
+              </div>
+              <button type="button" id="btn-delete-user" class="btn btn-outline-danger btn-sm">Supprimer ce compte</button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>

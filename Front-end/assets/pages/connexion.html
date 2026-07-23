@@ -1,0 +1,45 @@
+<section class="cx-section py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+
+
+                <div class="cx-form">
+                    <div class="cx-header text-center py-3" >
+                        <h2 class="cx-title">Connexion</h2>
+                    </div>
+                    <div class="cx-body p-4">
+                        <form id="connexion-form">
+                            <div class="mb-3">
+                                <label for="identifiant" class="form-label">Identifiant / Email :</label> 
+                                <div class="mb-3"><input type="email" name="email" id="ins-Email" class="form-control" required></div>
+                                
+                            </div>
+                            <div class="mb-3">
+                                <label for="Password" class="form-label">Mot de passe :</label>
+                                <div class="contain-Password-input"> 
+                                    <input type="password" id="ins-Password" name="Password" class="form-control" required>
+                                    <button type="button" class="btn-hide-password" id="btn-hide-Password"><i class="bi bi-eye"></i></button>
+                                </div>
+
+                            </div>
+                        </form>
+                        <div class="text-center">
+                        <button type="button" id="btn-cx-form" class=" btn btn-cx-form">Se connecter </button>
+
+                        <p class="mt-3 mb-0"><a href="/mdp-oublie" onclick="route(event)">Mot de passe oublié ?</a></p>
+
+                        <p>Vous n'avez pas encore de compte ? <br> Rejoignez nous dès maintenant pour profiter de tout nos services </p>
+                        <a href="/inscription" onclick="route(event)" class="btn btn-redirection-inscription-form">s'inscrire</a></div>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</section>
