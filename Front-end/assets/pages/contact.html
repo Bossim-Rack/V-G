@@ -3,37 +3,46 @@
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 col-lg-6">
 
-                <div class="contact-form">
-                    <div contact-header text-center py-3>
-                        <h2>Contact</h2>
+                <div class="contact-form cx-form">
+                    <div class="contact-header cx-header text-center py-3">
+                        <h2 class="cx-title">Contact</h2>
                     </div>
-                    <div class="contact-description-form">
-                        <p>Vous souhaitez nous contacter? envoyer nous un mail</p>
+                    <div class="contact-description-form px-4">
+                        <p>Une question, une demande de devis pour un événement ? Écrivez-nous : nous vous répondrons par email.</p>
                     </div>
                     <div class="contact-body p-4">
-                        <form id="contact-form">
-                            <div class="g-3 mb-3">
-                                <div class="col-6">
-                                    <label for="email" class="form-label"> Votre email :</label>
-                                    <input type="email" id="ins-Email" name="email" class="form-control" required>
+                        <form id="contact-form" novalidate>
+                            <div class="row g-3 mb-3">
+                                <div class="col-12 col-md-6">
+                                    <label for="contact-email" class="form-label">Votre email :</label>
+                                    <input type="email" id="contact-email" name="email" class="form-control" autocomplete="email" required>
                                 </div>
-                                <div class="col-6">
-                                    <label for="objet" class="form-label"> Objet :</label>
-                                    <input type="text" id="ins-title-contact" name="title" class="form-control" required>
+                                <div class="col-12 col-md-6">
+                                    <label for="contact-titre" class="form-label">Titre :</label>
+                                    <input type="text" id="contact-titre" name="titre" class="form-control" maxlength="150" required>
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="message" class="form-label"> votre message :</label>
-                                <input type="text" name="message" id="ins-message-contact" class="form-control" style="height: 150px" required>
+                                <label for="contact-description" class="form-label">Votre message :</label>
+                                <textarea id="contact-description" name="description" class="form-control" rows="6" maxlength="3000" required></textarea>
+                            </div>
+                            <!-- Champ piège anti-robots : invisible pour les visiteurs -->
+                            <div class="d-none" aria-hidden="true">
+                                <label for="contact-site">Ne pas remplir</label>
+                                <input type="text" id="contact-site" name="site" tabindex="-1" autocomplete="off">
+                            </div>
+
+                            <div class="alert alert-danger d-none" id="contact-erreur" role="alert"></div>
+                            <div class="alert alert-success d-none" id="contact-succes" role="status"></div>
+
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-connexion" id="btn-contact-envoie">Envoyer</button>
                             </div>
                         </form>
-
                     </div>
                 </div>
 
             </div>
         </div>
-
     </div>
-
 </section>

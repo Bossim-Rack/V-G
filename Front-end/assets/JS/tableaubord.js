@@ -5,7 +5,7 @@
 
 async function chargerProfil() {
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/account/me", {
+    const reponse = await fetch(API_URL + "/account/me", {
       method: "GET",
       headers: {
         "X-AUTH-TOKEN": localStorage.getItem('token')
@@ -29,8 +29,11 @@ async function chargerProfil() {
     const estAdmin = user.role && user.role.libelle === 'Admin';
     const navUtilisateurs = document.getElementById('nav-item-utilisateurs');
     if (navUtilisateurs) navUtilisateurs.classList.toggle('d-none', !estAdmin);
+    const navStats = document.getElementById('nav-item-stats');
+    if (navStats) navStats.classList.toggle('d-none', !estAdmin);
     if (estAdmin) {
       chargerUtilisateurs();
+      initialiserStatistiques();
     }
 
   } catch (error) {
@@ -52,7 +55,7 @@ async function chargerStatClients() {
   if (!stat) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/user/count-clients", {
+    const reponse = await fetch(API_URL + "/user/count-clients", {
       method: "GET",
       headers: {
         "X-AUTH-TOKEN": localStorage.getItem('token')
@@ -123,6 +126,10 @@ function creerCarteAvisModeration(avis) {
       '<div class="stars">' + etoiles(avis.note) + '</div>' +
       '<span class="dash-avis-statut ' + badgeClass + '">' + avis.statut + '</span>' +
     '</div>' +
+    '<p class="small text-muted mb-1">' +
+      echapperHtml(avis.user ? (avis.user.firstName + ' ' + avis.user.lastName) : '') +
+      (avis.commande ? ' — commande n°' + avis.commande.id + ' (' + echapperHtml(avis.commande.menu || '') + ')' : '') +
+    '</p>' +
     '<p class="avis-text mb-0"></p>' +
     boutons;
   div.querySelector('.avis-text').textContent = avis.description || '';
@@ -148,7 +155,7 @@ async function chargerAvisModeration() {
   const container = document.getElementById('avis-liste');
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/avis", {
+    const reponse = await fetch(API_URL + "/avis", {
       method: "GET",
       headers: {
         "X-AUTH-TOKEN": localStorage.getItem('token')
@@ -184,7 +191,7 @@ chargerAvisModeration();
 
 // Appel API : PUT /api/avis/{id} — fait basculer le statut (réservé admin/employé côté back)
 async function changerStatutAvis(id, statut) {
-  const reponse = await fetch("http://127.0.0.1:8000/api/avis/" + id, {
+  const reponse = await fetch(API_URL + "/avis/" + id, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -257,11 +264,16 @@ function creerLigneUtilisateur(user) {
   const nomComplet = (user.firstName || '') + ' ' + (user.lastName || '');
   const badgeClass = ROLE_BADGE_CLASS[user.role] || 'dash-role-client';
 
+  const statut = user.isActive === false
+    ? '<span class="dash-avis-statut dash-avis-refuse">Désactivé</span>'
+    : (user.isVerified === false ? '<span class="dash-avis-statut dash-avis-attente">Email non confirmé</span>' : '<span class="dash-avis-statut dash-avis-publie">Actif</span>');
+
   tr.innerHTML =
     '<td></td>' +
     '<td></td>' +
     '<td><span class="dash-role-badge ' + badgeClass + '"></span></td>' +
-    '<td><button type="button" class="btn btn-sm dash-table-btn js-edit-user" data-id="' + user.id + '" data-name="' + nomComplet.trim().replace(/"/g, '&quot;') + '" data-email="' + (user.email || '').replace(/"/g, '&quot;') + '" data-telephone="' + (user.phoneNumber || '').replace(/"/g, '&quot;') + '" data-role="' + (user.role || '') + '" data-since="' + (user.createdAt || '') + '">Modifier</button></td>';
+    '<td>' + statut + '</td>' +
+    '<td><button type="button" class="btn btn-sm dash-table-btn js-edit-user" data-id="' + user.id + '" data-name="' + echapperHtml(nomComplet.trim()) + '" data-email="' + echapperHtml(user.email || '') + '" data-telephone="' + echapperHtml(user.phoneNumber || '') + '" data-role="' + echapperHtml(user.role || '') + '" data-since="' + echapperHtml(user.createdAt || '') + '" data-active="' + (user.isActive === false ? '0' : '1') + '">Modifier</button></td>';
 
   tr.children[0].textContent = nomComplet.trim();
   tr.children[1].textContent = user.email || '';
@@ -276,7 +288,7 @@ async function chargerUtilisateurs() {
   if (!tbody) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/user", {
+    const reponse = await fetch(API_URL + "/user", {
       method: "GET",
       headers: {
         "X-AUTH-TOKEN": localStorage.getItem('token')
@@ -284,7 +296,7 @@ async function chargerUtilisateurs() {
     });
 
     if (!reponse.ok) {
-      tbody.innerHTML = '<tr><td colspan="4" class="profil-empty-hint">Impossible de charger les comptes.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="profil-empty-hint">Impossible de charger les comptes.</td></tr>';
       return;
     }
 
@@ -292,7 +304,7 @@ async function chargerUtilisateurs() {
     tbody.innerHTML = '';
 
     if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="profil-empty-hint">Aucun compte pour le moment.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="profil-empty-hint">Aucun compte pour le moment.</td></tr>';
       return;
     }
 
@@ -301,13 +313,13 @@ async function chargerUtilisateurs() {
     });
   } catch (error) {
     console.error(error);
-    tbody.innerHTML = '<tr><td colspan="4" class="profil-empty-hint">Impossible de contacter le serveur.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="profil-empty-hint">Impossible de contacter le serveur.</td></tr>';
   }
 }
 
 // Appel API : POST /api/user/create-employe (réservé admin côté back)
 async function creerEmploye(prenom, nom, email, password) {
-  const reponse = await fetch("http://127.0.0.1:8000/api/user/create-employe", {
+  const reponse = await fetch(API_URL + "/user/create-employe", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -367,6 +379,8 @@ document.getElementById('users-tbody').addEventListener('click', function (event
   document.getElementById('detail-Telephone').value = btn.dataset.telephone || '';
   document.getElementById('detail-Role').value = btn.dataset.role;
   document.getElementById('userDetailForm').dataset.id = btn.dataset.id;
+  document.getElementById('userDetailForm').dataset.role = btn.dataset.role;
+  afficherStatutCompte(btn.dataset.active === '1', btn.dataset.role === 'Admin');
 
   // on repart toujours en mode lecture seule à l'ouverture d'un compte
   var btnToggle = document.getElementById('btn-toggle-user-detail');
@@ -385,6 +399,37 @@ document.getElementById('btn-back-to-users').addEventListener('click', function 
   document.getElementById('users-list-view').classList.remove('d-none');
 });
 
+                          //========================//
+                          // Activer / désactiver un compte //
+                          //========================//
+
+function afficherStatutCompte(actif, estAdmin) {
+  var zone = document.getElementById('user-activation-zone');
+  // Un compte administrateur ne peut pas être désactivé.
+  zone.classList.toggle('d-none', estAdmin);
+  document.getElementById('detail-user-statut').textContent = actif ? 'actif' : 'désactivé';
+  var btn = document.getElementById('btn-toggle-user-actif');
+  btn.textContent = actif ? 'Désactiver le compte' : 'Réactiver le compte';
+  btn.dataset.actif = actif ? '1' : '0';
+}
+
+// Appel API : PUT /api/user/{id} avec isActive (réservé admin côté back)
+document.getElementById('btn-toggle-user-actif').addEventListener('click', async function () {
+  var id = document.getElementById('userDetailForm').dataset.id;
+  var actif = this.dataset.actif === '1';
+  var nom = document.getElementById('detail-user-name').textContent;
+  if (actif && !confirm('Désactiver le compte de ' + nom + ' ? Il ne pourra plus se connecter.')) return;
+
+  try {
+    await modifierUtilisateur(id, { isActive: !actif });
+    afficherStatutCompte(!actif, false);
+    chargerUtilisateurs();
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+});
+
 
 
                           //========================//
@@ -393,7 +438,7 @@ document.getElementById('btn-back-to-users').addEventListener('click', function 
 
 // Appel API : PUT /api/user/{id} (réservé admin côté back)
 async function modifierUtilisateur(id, infos) {
-  const reponse = await fetch("http://127.0.0.1:8000/api/user/" + id, {
+  const reponse = await fetch(API_URL + "/user/" + id, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -415,9 +460,11 @@ btnToggleUserDetail.addEventListener('click', async function () {
   var isEditing = btnToggleUserDetail.dataset.mode === 'edit';
 
   if (!isEditing) {
-    // passage en mode édition
+    // passage en mode édition (le rôle d'un administrateur reste verrouillé, l'email n'est pas modifiable)
+    var estCompteAdmin = document.getElementById('userDetailForm').dataset.role === 'Admin';
     document.getElementById('userDetailForm').querySelectorAll('input, select').forEach(function (f) {
-      if (f.tagName === 'SELECT') { f.disabled = false; } else { f.readOnly = false; }
+      if (f.id === 'detail-Email') return;
+      if (f.tagName === 'SELECT') { f.disabled = estCompteAdmin; } else { f.readOnly = false; }
     });
     btnToggleUserDetail.textContent = 'Enregistrer les changements';
     btnToggleUserDetail.dataset.mode = 'edit';
@@ -430,9 +477,11 @@ btnToggleUserDetail.addEventListener('click', async function () {
   var infos = {
     firstName: document.getElementById('detail-Prenom').value.trim(),
     lastName: document.getElementById('detail-Nom').value.trim(),
-    phoneNumber: document.getElementById('detail-Telephone').value.trim(),
-    role: document.getElementById('detail-Role').value
+    phoneNumber: document.getElementById('detail-Telephone').value.trim()
   };
+  if (document.getElementById('userDetailForm').dataset.role !== 'Admin') {
+    infos.role = document.getElementById('detail-Role').value;
+  }
 
   try {
     await modifierUtilisateur(id, infos);
@@ -462,7 +511,7 @@ document.getElementById('btn-delete-user').addEventListener('click', async funct
   if (!confirm('Supprimer définitivement le compte de ' + nom + ' ? Cette action est irréversible.')) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/user/" + id, {
+    const reponse = await fetch(API_URL + "/user/" + id, {
       method: "DELETE",
       headers: {
         "X-AUTH-TOKEN": localStorage.getItem('token')
@@ -531,7 +580,7 @@ function afficherPlats() {
 async function chargerPlats() {
   var tbody = document.getElementById('plats-tbody');
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/plat", {
+    const reponse = await fetch(API_URL + "/plat", {
       method: "GET",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -571,7 +620,7 @@ function afficherAllergenesCheckboxes(checkedIds) {
 async function chargerAllergenes(checkedIds) {
   var container = document.getElementById('plat-allergenes-list');
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/allergene", {
+    const reponse = await fetch(API_URL + "/allergene", {
       method: "GET",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -699,7 +748,7 @@ async function creerOuModifierPlat() {
   }
 
   var estEdition = platEditId !== null;
-  var url = "http://127.0.0.1:8000/api/plat" + (estEdition ? "/" + platEditId : "");
+  var url = API_URL + "/plat" + (estEdition ? "/" + platEditId : "");
   var methode = estEdition ? "PUT" : "POST";
 
   try {
@@ -732,7 +781,7 @@ document.getElementById('btn-delete-plat').addEventListener('click', async funct
   if (platEditId === null) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/plat/" + platEditId, {
+    const reponse = await fetch(API_URL + "/plat/" + platEditId, {
       method: "DELETE",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -803,7 +852,7 @@ function afficherMenus() {
 async function chargerMenus() {
   var conteneur = document.getElementById('menus-list');
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/menu", {
+    const reponse = await fetch(API_URL + "/menu", {
       method: "GET",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -892,7 +941,7 @@ async function chargerThemesPourMenu(checkedIds) {
   document.getElementById('btn-creer-theme').classList.add('d-none');
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/theme", {
+    const reponse = await fetch(API_URL + "/theme", {
       method: "GET",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -945,7 +994,7 @@ document.getElementById('btn-creer-theme').addEventListener('click', async funct
   if (!libelle || themeExisteDeja(libelle)) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/theme", {
+    const reponse = await fetch(API_URL + "/theme", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1019,7 +1068,7 @@ async function chargerRegimesPourMenu(checkedIds) {
   document.getElementById('btn-creer-regime').classList.add('d-none');
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/regime", {
+    const reponse = await fetch(API_URL + "/regime", {
       method: "GET",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -1068,7 +1117,7 @@ document.getElementById('btn-creer-regime').addEventListener('click', async func
   if (!libelle || regimeExisteDeja(libelle)) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/regime", {
+    const reponse = await fetch(API_URL + "/regime", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1121,6 +1170,7 @@ function openMenuDetail(mode, menu) {
   document.getElementById('detail-menu-prix').value = mode === 'edit' ? menu.prixParPersonne : '';
   document.getElementById('detail-menu-quantite').value = mode === 'edit' ? menu.quantiteRestante : '';
   document.getElementById('detail-menu-description').value = mode === 'edit' ? (menu.description || '') : '';
+  document.getElementById('detail-menu-conditions').value = mode === 'edit' ? (menu.conditions || '') : '';
   document.getElementById('detail-menu-photo-preview').src = mode === 'edit' ? (menu.photoMenu || '') : '';
 
   var checkedPlatIds = mode === 'edit' ? (menu.plats || []).map(function (p) { return p.id; }) : [];
@@ -1221,6 +1271,7 @@ async function creerOuModifierMenu() {
     nombrePersonneMinimum: parseInt(min, 10),
     prixParPersonne: parseFloat(prix),
     description: description,
+    conditions: document.getElementById('detail-menu-conditions').value.trim(),
     quantiteRestante: quantite ? parseInt(quantite, 10) : null,
     plats: platsChoisis,
     themes: themesChoisis,
@@ -1231,7 +1282,7 @@ async function creerOuModifierMenu() {
   }
 
   var estEdition = menuEditId !== null;
-  var url = "http://127.0.0.1:8000/api/menu" + (estEdition ? "/" + menuEditId : "");
+  var url = API_URL + "/menu" + (estEdition ? "/" + menuEditId : "");
   var methode = estEdition ? "PUT" : "POST";
 
   try {
@@ -1264,13 +1315,14 @@ document.getElementById('btn-delete-menu').addEventListener('click', async funct
   if (menuEditId === null) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/menu/" + menuEditId, {
+    const reponse = await fetch(API_URL + "/menu/" + menuEditId, {
       method: "DELETE",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
 
     if (!reponse.ok) {
-      menuAfficherErreur('Une erreur est survenue lors de la suppression du menu.');
+      const data = await reponse.json().catch(() => null);
+      menuAfficherErreur(messageErreurApi(data, 'Une erreur est survenue lors de la suppression du menu.'));
       return;
     }
 
@@ -1287,123 +1339,87 @@ document.getElementById('btn-delete-menu').addEventListener('click', async funct
                           // Commandes //
                           //========================//
 
-// Statut réel stocké côté API ("En attente"/"Confirmée"/"Annulée") -> classe
-// CSS du badge (voir .profil-statut-* dans le CSS).
-const COMMANDE_BADGE_CLASS = {
-  'En attente': 'profil-statut-attente',
-  'Confirmée': 'profil-statut-confirmee',
-  'Terminée': 'profil-statut-terminee',
-  'Annulée': 'profil-statut-annulee'
-};
+let commandesCache = [];          // commandes affichées (selon les filtres)
+let commandeDetailCourante = null;
 
-let commandesCache = [];
+function enTetesApi(avecJson) {
+  var h = { "X-AUTH-TOKEN": localStorage.getItem('token') };
+  if (avecJson) h["Content-Type"] = "application/json";
+  return h;
+}
+
+function eurosCommande(montant) {
+  return Number(montant || 0).toFixed(2).replace('.', ',') + ' €';
+}
 
 function formaterDateCommande(commande) {
-  var date = commande.datePrestation ? commande.datePrestation.split('-').reverse().join('/') : '—';
+  var date = formaterDateFr(commande.datePrestation);
   return commande.heureLivraison ? date + ' · ' + commande.heureLivraison : date;
-}
-
-function calculerMontantCommande(commande) {
-  var prixUnitaire = parseFloat(commande.prixMenu);
-  return (isNaN(prixUnitaire) ? 0 : prixUnitaire * (commande.nombrePersonne || 0)) + (parseFloat(commande.prixLivraison) || 0);
-}
-
-function formaterPrixCommande(commande) {
-  return calculerMontantCommande(commande).toFixed(2) + ' €';
-}
-
-// "CA du mois" (Vue d'ensemble) : somme des commandes au statut "Terminée"
-// dont la date de PRESTATION (l'événement livré) tombe dans le mois en cours.
-function calculerCaDuMois(commandes) {
-  var maintenant = new Date();
-  var moisCourant = maintenant.getMonth();
-  var anneeCourante = maintenant.getFullYear();
-
-  return commandes
-    .filter(function (c) {
-      if (c.statut !== 'Terminée' || !c.datePrestation) return false;
-      var d = new Date(c.datePrestation);
-      return d.getMonth() === moisCourant && d.getFullYear() === anneeCourante;
-    })
-    .reduce(function (somme, c) { return somme + calculerMontantCommande(c); }, 0);
 }
 
 function creerLigneCommande(commande) {
   var tr = document.createElement('tr');
   tr.dataset.id = commande.id;
-  var badgeClass = COMMANDE_BADGE_CLASS[commande.statut] || 'profil-statut-attente';
+  var badgeClass = CLASSES_STATUT_COMMANDE[commande.statut] || 'profil-statut-attente';
   tr.innerHTML =
-    '<td>' + (commande.menu ? commande.menu.titleMenu : '—') + '</td>' +
-    '<td>' + (commande.user ? (commande.user.firstName + ' ' + commande.user.lastName) : '—') + '</td>' +
-    '<td>' + (commande.adresse || '—') + '</td>' +
-    '<td>' + formaterDateCommande(commande) + '</td>' +
+    '<td>' + commande.id + '</td>' +
+    '<td>' + echapperHtml(commande.menu ? commande.menu.titleMenu : '—') + '</td>' +
+    '<td>' + echapperHtml(commande.user ? (commande.user.firstName + ' ' + commande.user.lastName) : '—') + '</td>' +
+    '<td>' + echapperHtml(formaterDateCommande(commande)) + '</td>' +
     '<td>' + (commande.nombrePersonne != null ? commande.nombrePersonne : '—') + '</td>' +
-    '<td>' + formaterPrixCommande(commande) + '</td>' +
-    '<td><span class="profil-statut ' + badgeClass + '">' + commande.statut + '</span></td>' +
-    '<td><button type="button" class="btn btn-sm dash-table-btn js-edit-commande" data-id="' + commande.id + '">Modifier</button></td>';
+    '<td>' + eurosCommande(commande.montantTotal) + '</td>' +
+    '<td><span class="profil-statut ' + badgeClass + '">' + echapperHtml(commande.statut) + '</span></td>' +
+    '<td><button type="button" class="btn btn-sm dash-table-btn js-edit-commande" data-id="' + commande.id + '">Gérer</button></td>';
   return tr;
 }
 
 function creerCarteApercuCommande(commande) {
-  var badgeClass = COMMANDE_BADGE_CLASS[commande.statut] || 'profil-statut-attente';
+  var badgeClass = CLASSES_STATUT_COMMANDE[commande.statut] || 'profil-statut-attente';
   var div = document.createElement('div');
   div.className = 'commande-card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2';
   div.innerHTML =
     '<div>' +
-      '<p class="commande-menu mb-1">' + (commande.menu ? commande.menu.titleMenu : 'Menu') + '</p>' +
-      '<p class="commande-details mb-0">Prestation le ' + formaterDateCommande(commande) + ' · ' + (commande.nombrePersonne != null ? commande.nombrePersonne : '—') + ' personnes</p>' +
+      '<p class="commande-menu mb-1">' + echapperHtml(commande.menu ? commande.menu.titleMenu : 'Menu') + '</p>' +
+      '<p class="commande-details mb-0">Prestation le ' + echapperHtml(formaterDateCommande(commande)) + ' · ' + (commande.nombrePersonne != null ? commande.nombrePersonne : '—') + ' personnes</p>' +
     '</div>' +
     '<div class="text-end">' +
-      '<span class="profil-statut ' + badgeClass + '">' + commande.statut + '</span>' +
-      '<p class="commande-prix mb-0 mt-1">' + formaterPrixCommande(commande) + '</p>' +
+      '<span class="profil-statut ' + badgeClass + '">' + echapperHtml(commande.statut) + '</span>' +
+      '<p class="commande-prix mb-0 mt-1">' + eurosCommande(commande.montantTotal) + '</p>' +
     '</div>';
   return div;
 }
 
-// Appel API : GET /api/commande (réservé admin/employé côté back)
-async function chargerCommandes() {
-  var tbody = document.getElementById('commandes-tbody');
+// "CA du mois" (Vue d'ensemble) : commandes "Terminée" dont la prestation tombe dans le mois en cours.
+function calculerCaDuMois(commandes) {
+  var maintenant = new Date();
+  return commandes
+    .filter(function (c) {
+      if (c.statut !== 'Terminée' || !c.datePrestation) return false;
+      var d = new Date(c.datePrestation);
+      return d.getMonth() === maintenant.getMonth() && d.getFullYear() === maintenant.getFullYear();
+    })
+    .reduce(function (somme, c) { return somme + (c.montantTotal || 0); }, 0);
+}
+
+// Vue d'ensemble : toutes les commandes, sans filtre.
+async function chargerApercuCommandes() {
   var apercu = document.getElementById('dernieres-commandes-liste');
-
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/commande", {
-      method: "GET",
-      headers: {
-        "X-AUTH-TOKEN": localStorage.getItem('token')
-      }
-    });
-
+    const reponse = await fetch(API_URL + "/commande", { headers: enTetesApi() });
     if (!reponse.ok) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="profil-empty-hint">Impossible de charger les commandes.</td></tr>';
       if (apercu) apercu.innerHTML = '<p class="text-center profil-empty-hint mb-0">Impossible de charger les commandes.</p>';
       return;
     }
-
-    commandesCache = await reponse.json();
+    const toutes = await reponse.json();
 
     var statAttente = document.getElementById('stat-commandes-attente');
-    if (statAttente) {
-      var nbEnAttente = commandesCache.filter(function (c) { return c.statut === 'En attente'; }).length;
-      statAttente.textContent = nbEnAttente;
-    }
-
+    if (statAttente) statAttente.textContent = toutes.filter(function (c) { return c.statut === 'En attente'; }).length;
     var statCa = document.getElementById('stat-ca-mois');
-    if (statCa) {
-      statCa.textContent = calculerCaDuMois(commandesCache).toFixed(2) + ' €';
-    }
-
-    if (tbody) {
-      tbody.innerHTML = '';
-      if (!commandesCache.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="profil-empty-hint">Aucune commande pour le moment.</td></tr>';
-      } else {
-        commandesCache.forEach(function (commande) { tbody.appendChild(creerLigneCommande(commande)); });
-      }
-    }
+    if (statCa) statCa.textContent = eurosCommande(calculerCaDuMois(toutes));
 
     if (apercu) {
       apercu.innerHTML = '';
-      var dernieres = commandesCache.slice(0, 2);
+      var dernieres = toutes.slice(0, 3);
       if (!dernieres.length) {
         apercu.innerHTML = '<p class="text-center profil-empty-hint mb-0">Aucune commande pour le moment.</p>';
       } else {
@@ -1412,33 +1428,149 @@ async function chargerCommandes() {
     }
   } catch (error) {
     console.error(error);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="profil-empty-hint">Impossible de contacter le serveur.</td></tr>';
     if (apercu) apercu.innerHTML = '<p class="text-center profil-empty-hint mb-0">Impossible de contacter le serveur.</p>';
   }
 }
 
+// Appel API : GET /api/commande?statut=...&client=... (réservé admin/employé côté back)
+async function chargerCommandes() {
+  var tbody = document.getElementById('commandes-tbody');
+  var params = new URLSearchParams();
+  var statut = document.getElementById('filtre-commande-statut').value;
+  var client = document.getElementById('filtre-commande-client').value.trim();
+  if (statut) params.set('statut', statut);
+  if (client) params.set('client', client);
+
+  try {
+    const reponse = await fetch(API_URL + "/commande" + (params.toString() ? '?' + params.toString() : ''), { headers: enTetesApi() });
+
+    if (!reponse.ok) {
+      tbody.innerHTML = '<tr><td colspan="8" class="profil-empty-hint">Impossible de charger les commandes.</td></tr>';
+      return;
+    }
+
+    commandesCache = await reponse.json();
+    tbody.innerHTML = '';
+    if (!commandesCache.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="profil-empty-hint">Aucune commande ne correspond à ces critères.</td></tr>';
+    } else {
+      commandesCache.forEach(function (commande) { tbody.appendChild(creerLigneCommande(commande)); });
+    }
+  } catch (error) {
+    console.error(error);
+    tbody.innerHTML = '<tr><td colspan="8" class="profil-empty-hint">Impossible de contacter le serveur.</td></tr>';
+  }
+}
+
+// Liste des statuts (filtre + sélecteur) fournie par l'API : une seule source de vérité.
+let statutsCommande = [];
+async function chargerStatutsCommande() {
+  try {
+    const reponse = await fetch(API_URL + "/commande/statuts", { headers: enTetesApi() });
+    if (!reponse.ok) return;
+    const data = await reponse.json();
+    statutsCommande = data.statuts;
+    document.getElementById('filtre-commande-statut').innerHTML = '<option value="">Tous les statuts</option>' +
+      statutsCommande.map(function (s) { return '<option value="' + echapperHtml(s) + '">' + echapperHtml(s) + '</option>'; }).join('');
+    // "Annulée" passe par le bouton dédié (motif + mode de contact obligatoires).
+    document.getElementById('detail-commande-statut').innerHTML =
+      statutsCommande.filter(function (s) { return s !== 'Annulée'; })
+        .map(function (s) { return '<option value="' + echapperHtml(s) + '">' + echapperHtml(s) + '</option>'; }).join('');
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+chargerStatutsCommande();
+chargerApercuCommandes();
 chargerCommandes();
 
-// Délégation d'évènements : les lignes du tableau sont générées dynamiquement.
-document.getElementById('commandes-tbody').addEventListener('click', function (event) {
-  var btn = event.target.closest('.js-edit-commande');
-  if (!btn) return;
+// Filtres : mise à jour sans rechargement de la page.
+let minuteurFiltreCommandes = null;
+document.getElementById('filtre-commande-statut').addEventListener('change', chargerCommandes);
+document.getElementById('filtre-commande-client').addEventListener('input', function () {
+  clearTimeout(minuteurFiltreCommandes);
+  minuteurFiltreCommandes = setTimeout(chargerCommandes, 300);
+});
+document.getElementById('btn-filtres-commandes-reset').addEventListener('click', function () {
+  document.getElementById('filtre-commande-statut').value = '';
+  document.getElementById('filtre-commande-client').value = '';
+  chargerCommandes();
+});
 
-  var id = parseInt(btn.dataset.id, 10);
-  var commande = commandesCache.find(function (c) { return c.id === id; });
-  if (!commande) return;
+function afficherDetailCommande(commande) {
+  commandeDetailCourante = commande;
+  var badge = document.getElementById('detail-commande-statut-badge');
+  badge.className = 'profil-statut ' + (CLASSES_STATUT_COMMANDE[commande.statut] || 'profil-statut-attente');
+  badge.textContent = commande.statut;
 
+  document.getElementById('detail-commande-titre').textContent = 'Commande n°' + commande.id + ' du ' + formaterDateFr(commande.dateCommande);
   document.getElementById('detail-commande-menu').textContent = commande.menu ? commande.menu.titleMenu : '—';
   document.getElementById('detail-commande-client').textContent = commande.user ? (commande.user.firstName + ' ' + commande.user.lastName) : '—';
+  document.getElementById('detail-commande-contact').textContent = commande.user
+    ? 'GSM : ' + (commande.user.phoneNumber || 'non renseigné') + ' · Email : ' + commande.user.email
+    : '';
   document.getElementById('detail-commande-adresse').textContent = commande.adresse || '—';
   document.getElementById('detail-commande-date').textContent = formaterDateCommande(commande);
   document.getElementById('detail-commande-personnes').textContent = commande.nombrePersonne != null ? commande.nombrePersonne : '—';
-  document.getElementById('detail-commande-prix').textContent = formaterPrixCommande(commande);
-  document.getElementById('detail-commande-statut').value = commande.statut || 'En attente';
-  document.getElementById('commandeDetailForm').dataset.id = commande.id;
+  var livraison = parseFloat(commande.prixLivraison) || 0;
+  document.getElementById('detail-commande-prix').textContent = eurosCommande(commande.montantTotal) +
+    ' (menu ' + eurosCommande(parseFloat(commande.prixMenu) * commande.nombrePersonne) + ' + livraison ' + (livraison > 0 ? eurosCommande(livraison) : 'offerte') + ')';
+
+  var annulationWrap = document.getElementById('detail-commande-annulation-wrap');
+  annulationWrap.classList.toggle('d-none', !commande.motifAnnulation);
+  document.getElementById('detail-commande-annulation').textContent = commande.motifAnnulation
+    ? 'Motif d\'annulation : ' + commande.motifAnnulation + (commande.modeContact ? ' (client contacté par ' + commande.modeContact + ')' : '')
+    : '';
+
+  // Suivi (historique des statuts)
+  var suivi = document.getElementById('detail-commande-suivi');
+  suivi.innerHTML = (commande.historique && commande.historique.length)
+    ? '<ul class="suivi-commande">' + commande.historique.map(function (h) {
+        return '<li><strong>' + echapperHtml(h.statut) + '</strong> <span class="suivi-date">le ' + echapperHtml(formaterDateFr(h.date)) + '</span>' +
+          (h.commentaire ? '<br><span class="text-muted">' + echapperHtml(h.commentaire) + '</span>' : '') + '</li>';
+      }).join('') + '</ul>'
+    : '<p class="profil-empty-hint mb-0">Aucun historique.</p>';
+
+  // Une commande terminée ou annulée ne bouge plus.
+  var finale = commande.statut === 'Terminée' || commande.statut === 'Annulée';
+  document.getElementById('detail-commande-actions').classList.toggle('d-none', finale);
+
+  document.getElementById('detail-commande-statut').value = commande.statut;
+  document.getElementById('detail-commande-pret').checked = !!commande.pretMateriel;
+  document.getElementById('detail-commande-mode-contact').value = '';
+  document.getElementById('detail-commande-motif').value = '';
+  document.getElementById('detail-commande-edit-date').value = commande.datePrestation || '';
+  document.getElementById('detail-commande-edit-heure').value = commande.heureLivraison || '';
+  document.getElementById('detail-commande-edit-adresse').value = commande.adresse || '';
+  document.getElementById('detail-commande-edit-personnes').value = commande.nombrePersonne || '';
+  document.getElementById('detail-commande-edit-personnes').min = commande.menu ? commande.menu.nombrePersonneMinimum : 1;
+  ['detail-commande-statut-erreur', 'detail-commande-modif-erreur'].forEach(function (id) {
+    document.getElementById(id).classList.add('d-none');
+  });
 
   document.getElementById('commandes-list-view').classList.add('d-none');
   document.getElementById('commande-detail-view').classList.remove('d-none');
+}
+
+// Appel API : GET /api/commande/{id} (détail complet avec le suivi)
+async function ouvrirDetailCommande(id) {
+  try {
+    const reponse = await fetch(API_URL + "/commande/" + id, { headers: enTetesApi() });
+    if (!reponse.ok) {
+      alert('Impossible de charger cette commande.');
+      return;
+    }
+    afficherDetailCommande(await reponse.json());
+  } catch (error) {
+    console.error(error);
+    alert('Impossible de contacter le serveur.');
+  }
+}
+
+document.getElementById('commandes-tbody').addEventListener('click', function (event) {
+  var btn = event.target.closest('.js-edit-commande');
+  if (btn) ouvrirDetailCommande(parseInt(btn.dataset.id, 10));
 });
 
 document.getElementById('btn-back-to-commandes').addEventListener('click', function () {
@@ -1446,37 +1578,186 @@ document.getElementById('btn-back-to-commandes').addEventListener('click', funct
   document.getElementById('commandes-list-view').classList.remove('d-none');
 });
 
-// Appel API : PUT /api/commande/{id} — met à jour le statut (réservé admin/employé côté back)
-document.getElementById('btn-save-commande').addEventListener('click', async function () {
-  var id = document.getElementById('commandeDetailForm').dataset.id;
-  if (!id) return;
+function afficherErreurCommande(idElement, message) {
+  var el = document.getElementById(idElement);
+  el.textContent = message;
+  el.classList.remove('d-none');
+}
 
-  var statut = document.getElementById('detail-commande-statut').value;
-
+// Envoie une action sur la commande courante puis rafraîchit le détail et la liste.
+async function actionCommande(chemin, methode, corps, idErreur) {
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/commande/" + id, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-AUTH-TOKEN": localStorage.getItem('token')
-      },
-      body: JSON.stringify({ statut: statut })
+    const reponse = await fetch(API_URL + "/commande/" + commandeDetailCourante.id + chemin, {
+      method: methode,
+      headers: enTetesApi(true),
+      body: JSON.stringify(corps)
     });
+    const data = await reponse.json().catch(() => null);
 
     if (!reponse.ok) {
-      alert('Impossible de mettre à jour cette commande.');
+      afficherErreurCommande(idErreur, messageErreurApi(data, "L'opération a échoué."));
       return;
     }
 
-    document.getElementById('commande-detail-view').classList.add('d-none');
-    document.getElementById('commandes-list-view').classList.remove('d-none');
-
+    if (data && data.mailEnvoye === false) {
+      alert("Commande mise à jour, mais le mail au client n'a pas pu être envoyé.");
+    }
+    afficherDetailCommande(data);
     chargerCommandes();
+    chargerApercuCommandes();
   } catch (error) {
     console.error(error);
-    alert('Impossible de contacter le serveur.');
+    afficherErreurCommande(idErreur, 'Impossible de contacter le serveur.');
   }
+}
+
+// Appel API : PUT /api/commande/{id}/statut
+document.getElementById('btn-save-commande').addEventListener('click', function () {
+  if (!commandeDetailCourante) return;
+  document.getElementById('detail-commande-statut-erreur').classList.add('d-none');
+  actionCommande('/statut', 'PUT', {
+    statut: document.getElementById('detail-commande-statut').value,
+    pretMateriel: document.getElementById('detail-commande-pret').checked
+  }, 'detail-commande-statut-erreur');
 });
+
+function contactClientRenseigne() {
+  var mode = document.getElementById('detail-commande-mode-contact').value;
+  var motif = document.getElementById('detail-commande-motif').value.trim();
+  if (!mode || !motif) {
+    afficherErreurCommande('detail-commande-modif-erreur', 'Contactez d\'abord le client puis indiquez le mode de contact (GSM ou Email) et le motif.');
+    return null;
+  }
+  return { modeContact: mode, motif: motif };
+}
+
+// Appel API : PUT /api/commande/{id} (modification après contact du client)
+document.getElementById('btn-modifier-commande').addEventListener('click', function () {
+  if (!commandeDetailCourante) return;
+  document.getElementById('detail-commande-modif-erreur').classList.add('d-none');
+  var contact = contactClientRenseigne();
+  if (!contact) return;
+
+  actionCommande('', 'PUT', Object.assign(contact, {
+    datePrestation: document.getElementById('detail-commande-edit-date').value,
+    heureLivraison: document.getElementById('detail-commande-edit-heure').value,
+    adresse: document.getElementById('detail-commande-edit-adresse').value.trim(),
+    nombrePersonne: parseInt(document.getElementById('detail-commande-edit-personnes').value, 10)
+  }), 'detail-commande-modif-erreur');
+});
+
+// Appel API : POST /api/commande/{id}/annuler (motif + mode de contact obligatoires)
+document.getElementById('btn-annuler-commande').addEventListener('click', function () {
+  if (!commandeDetailCourante) return;
+  document.getElementById('detail-commande-modif-erreur').classList.add('d-none');
+  var contact = contactClientRenseigne();
+  if (!contact) return;
+  if (!confirm('Annuler définitivement la commande n°' + commandeDetailCourante.id + ' ?')) return;
+
+  actionCommande('/annuler', 'POST', contact, 'detail-commande-modif-erreur');
+});
+
+
+                          //========================//
+                          // Statistiques (administrateur, données MongoDB) //
+                          //========================//
+
+let graphiqueCommandes = null;
+let statistiquesInitialisees = false;
+
+async function initialiserStatistiques() {
+  if (statistiquesInitialisees) return;
+  statistiquesInitialisees = true;
+
+  // Liste des menus pour le filtre
+  try {
+    const reponse = await fetch(API_URL + "/menu");
+    if (reponse.ok) {
+      const menus = await reponse.json();
+      document.getElementById('stats-menu').innerHTML = '<option value="">Tous les menus</option>' +
+        menus.map(function (m) { return '<option value="' + m.id + '">' + echapperHtml(m.titleMenu) + '</option>'; }).join('');
+    }
+  } catch (error) {
+    console.error(error);
+  }
+
+  chargerStatistiques();
+}
+
+function parametresStatistiques(avecMenu) {
+  var params = new URLSearchParams();
+  var debut = document.getElementById('stats-debut').value;
+  var fin = document.getElementById('stats-fin').value;
+  var menu = document.getElementById('stats-menu').value;
+  if (debut) params.set('debut', debut);
+  if (fin) params.set('fin', fin);
+  if (avecMenu && menu) params.set('menuId', menu);
+  return params.toString() ? '?' + params.toString() : '';
+}
+
+// Appels API : GET /api/stats/commandes-par-menu et /api/stats/chiffre-affaires
+async function chargerStatistiques() {
+  var erreur = document.getElementById('stats-erreur');
+  erreur.classList.add('d-none');
+
+  try {
+    const [repCommandes, repCa] = await Promise.all([
+      fetch(API_URL + "/stats/commandes-par-menu" + parametresStatistiques(false), { headers: enTetesApi() }),
+      fetch(API_URL + "/stats/chiffre-affaires" + parametresStatistiques(true), { headers: enTetesApi() })
+    ]);
+    const commandesParMenu = await repCommandes.json().catch(() => null);
+    const ca = await repCa.json().catch(() => null);
+
+    if (!repCommandes.ok || !repCa.ok) {
+      erreur.textContent = messageErreurApi(!repCommandes.ok ? commandesParMenu : ca, 'Statistiques indisponibles.');
+      erreur.classList.remove('d-none');
+      return;
+    }
+
+    dessinerGraphiqueCommandes(commandesParMenu);
+
+    document.getElementById('stats-ca-total').textContent = eurosCommande(ca.total);
+    document.getElementById('stats-nb-commandes').textContent = ca.nombreCommandes;
+    var tbody = document.getElementById('stats-ca-tbody');
+    tbody.innerHTML = ca.parMenu.length
+      ? ca.parMenu.map(function (ligne) {
+          return '<tr><td>' + echapperHtml(ligne.menu) + '</td><td>' + ligne.nombreCommandes + '</td><td>' + eurosCommande(ligne.chiffreAffaires) + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="3" class="profil-empty-hint">Aucune commande sur cette période.</td></tr>';
+  } catch (error) {
+    console.error(error);
+    erreur.textContent = 'Impossible de contacter le serveur.';
+    erreur.classList.remove('d-none');
+  }
+}
+
+// Graphique en barres (Chart.js) : comparaison du nombre de commandes entre les menus.
+function dessinerGraphiqueCommandes(donnees) {
+  var canvas = document.getElementById('stats-chart');
+  if (typeof Chart === 'undefined' || !canvas) return;
+
+  if (graphiqueCommandes) graphiqueCommandes.destroy();
+  graphiqueCommandes = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: donnees.map(function (d) { return d.menu; }),
+      datasets: [{
+        label: 'Nombre de commandes',
+        data: donnees.map(function (d) { return d.nombreCommandes; }),
+        backgroundColor: '#3d4a3a',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+document.getElementById('btn-stats-appliquer').addEventListener('click', chargerStatistiques);
 
 
                           //========================//
@@ -1534,7 +1815,7 @@ async function chargerHoraires() {
   const tbody = document.getElementById('horaires-tbody');
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/horraires", {
+    const reponse = await fetch(API_URL + "/horraires", {
       method: "GET",
       headers: {
         "X-AUTH-TOKEN": localStorage.getItem('token')
@@ -1590,7 +1871,7 @@ function remplirLigneHoraire(tr, horaire) {
 
 // Appel API : POST /api/horraires
 async function add_horaire(jour, heure) {
-  const reponse = await fetch("http://127.0.0.1:8000/api/horraires", {
+  const reponse = await fetch(API_URL + "/horraires", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1608,7 +1889,7 @@ async function add_horaire(jour, heure) {
 
 // Appel API : PUT /api/horraires/{id}
 async function put_horaire(id, jour, heure) {
-  const reponse = await fetch("http://127.0.0.1:8000/api/horraires/" + id, {
+  const reponse = await fetch(API_URL + "/horraires/" + id, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -1624,7 +1905,7 @@ async function put_horaire(id, jour, heure) {
 
 // Appel API : DELETE /api/horraires/{id}
 async function del_horaire(id) {
-  const reponse = await fetch("http://127.0.0.1:8000/api/horraires/" + id, {
+  const reponse = await fetch(API_URL + "/horraires/" + id, {
     method: "DELETE",
     headers: {
       "X-AUTH-TOKEN": localStorage.getItem('token')

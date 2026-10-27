@@ -10,7 +10,7 @@ async function chargerHorairesFooter() {
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/horraires", {
+    const reponse = await fetch(API_URL + "/horraires", {
       method: "GET"
     });
 

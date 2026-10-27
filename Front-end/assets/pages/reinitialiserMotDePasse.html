@@ -1,0 +1,52 @@
+<section class="cx-section py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+
+                <div class="cx-form">
+                    <div class="cx-header text-center py-3">
+                        <h2 class="cx-title">Nouveau mot de passe</h2>
+                    </div>
+                    <div class="cx-body p-4">
+
+                        <form id="reset-form">
+                            <div class="mb-3">
+                                <label for="reset-Password" class="form-label">Nouveau mot de passe :</label>
+                                <div class="contain-Password-input">
+                                    <input type="password" id="reset-Password" class="form-control" autocomplete="new-password" required>
+                                    <button type="button" class="btn-hide-password" id="btn-hide-Password" aria-label="Afficher ou masquer le mot de passe"><i class="bi bi-eye"></i></button>
+                                </div>
+                                <div id="strength-bar" class="ins-strength"></div>
+                                <ul class="small text-muted mb-0 mt-2 ps-3" id="reset-password-regles" aria-live="polite">
+                                    <li data-critere="longueur">10 caractères minimum</li>
+                                    <li data-critere="majuscule">une majuscule</li>
+                                    <li data-critere="minuscule">une minuscule</li>
+                                    <li data-critere="chiffre">un chiffre</li>
+                                    <li data-critere="special">un caractère spécial (! ? @ # ...)</li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="reset-ConfirmPassword" class="form-label">Confirmer le nouveau mot de passe :</label>
+                                <div class="contain-ConfirmPassword-input">
+                                    <input type="password" id="reset-ConfirmPassword" class="form-control" autocomplete="new-password" required>
+                                    <button type="button" class="btn-hide-password" id="btn-hide-ConfirmPassword" aria-label="Afficher ou masquer la confirmation"><i class="bi bi-eye"></i></button>
+                                </div>
+                            </div>
+
+                            <p class="text-danger d-none" id="reset-error" role="alert"></p>
+                            <p class="text-success d-none" id="reset-succes" role="status"></p>
+                        </form>
+
+                        <div class="text-center">
+                            <button type="button" id="btn-reset-envoie" class="btn btn-cx-form">Enregistrer le nouveau mot de passe</button>
+                            <p class="mt-3 mb-0"><a href="/mdp-oublie" onclick="route(event)">Lien expiré ? Faire une nouvelle demande</a></p>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>

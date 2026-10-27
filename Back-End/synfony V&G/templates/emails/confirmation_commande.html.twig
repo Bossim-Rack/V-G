@@ -1,0 +1,14 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Merci pour votre commande !</h1>
+    <p>Bonjour {{ commande.user.firstName }},</p>
+    <p>Nous avons bien reçu votre commande. Elle est actuellement <strong>en attente de validation</strong> par notre équipe : vous serez informé de son avancement dans votre espace « Mes commandes ».</p>
+    {% include 'emails/_recap_commande.html.twig' %}
+    {% if commande.menu.conditions %}
+        <div style="border-left:4px solid #e3b04b;background:#fff8e6;padding:12px 16px;margin:16px 0;">
+            <strong>Conditions de ce menu :</strong><br>{{ commande.menu.conditions|nl2br }}
+        </div>
+    {% endif %}
+    <p>Tant que la commande n'est pas acceptée, vous pouvez la modifier ou l'annuler depuis votre espace.</p>
+    <p>À très vite,<br>Julie &amp; José</p>
+{% endblock %}

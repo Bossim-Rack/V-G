@@ -40,11 +40,11 @@
             <form id="profilInfosForm">
               <div class="row g-3 mb-3">
                 <div class="col-6">
-                  <label class="form-label">Nom :</label>
+                  <label class="form-label" for="profil-Nom">Nom :</label>
                   <input type="text" id="profil-Nom" name="lastName" class="form-control" readonly>
                 </div>
                 <div class="col-6">
-                  <label class="form-label">Prénom :</label>
+                  <label class="form-label" for="profil-Prenom">Prénom :</label>
                   <input type="text" id="profil-Prenom" name="firstName" class="form-control" readonly>
                 </div>
               </div>
@@ -56,17 +56,17 @@
                   Je veux pas modifier le mail -->
                 </div>
                 <div class="col-6">
-                  <label class="form-label">Téléphone :</label>
+                  <label class="form-label" for="profil-Telephone">Téléphone :</label>
                   <input type="tel" id="profil-Telephone" name="telephone" class="form-control" readonly>
                 </div>
               </div>
               <div class="mb-3">
-                <label class="form-label">Adresse :</label>
+                <label class="form-label" for="profil-Adresse">Adresse :</label>
                 <input type="text" id="profil-Adresse" name="adresse" class="form-control" placeholder="Numéro, rue, ville, code postal" readonly>
                 <small class="text-muted">Utilisée pour pré-remplir l'adresse de livraison lors de vos commandes.</small>
               </div>
               <div class="mb-3">
-                <label class="form-label">Allergies / régime :</label>
+                <label class="form-label" for="profil-Allergy">Allergies / régime :</label>
                 <input type="text" id="profil-Allergy" name="allergy" class="form-control" placeholder="Ex : sans gluten" readonly>
               </div>
               <div class="text-end">
@@ -97,6 +97,7 @@
                   <button type="button" class="btn-hide-password" id="btn-hide-NewPassword"><i class="bi bi-eye"></i></button>
                 </div>
                 <div id="profil-strength-bar" class="ins-strength"></div>
+                <small class="text-muted">10 caractères minimum, avec une majuscule, une minuscule, un chiffre et un caractère spécial.</small>
               </div>
               <div class="mb-3">
                 <label class="form-label">Confirmer le nouveau mot de passe :</label>
@@ -136,6 +137,11 @@
             <div class="collapse mb-4" id="form-ajout-avis">
               <form id="avisAddForm" class="dash-add-form p-3">
                 <div class="mb-3">
+                  <label class="form-label" for="avis-commande">Commande concernée :</label>
+                  <select id="avis-commande" class="form-select"></select>
+                  <small class="text-muted">Vous pouvez donner votre avis sur chaque commande terminée.</small>
+                </div>
+                <div class="mb-3">
                   <label class="form-label" for="avis-note">Note :</label>
                   <select id="avis-note" class="form-select" style="max-width:220px">
                     <option value="5">★★★★★ (5/5)</option>
@@ -171,11 +177,17 @@
           <div class="profil-card-body p-4">
             <div class="profil-danger-zone p-4">
               <h3 class="profil-danger-title h6 mb-2">Cette action est définitive et irréversible</h3>
-              <p class="mb-3" style="color:var(--Encre)">Toutes tes informations personnelles, commandes et avis seront supprimés. Cette action ne peut pas être annulée.</p>
+              <p class="mb-2" style="color:var(--Encre)">Tes informations personnelles (nom, email, téléphone, adresse, allergies) et tes avis seront supprimés, et tu ne pourras plus te connecter.</p>
+              <p class="mb-3 small" style="color:var(--Encre)">Si tu as déjà passé des commandes, elles sont conservées de façon anonyme (obligation comptable). Une commande en cours doit d'abord être annulée ou terminée.</p>
               <div class="mb-3">
-                <label class="form-label" style="color:var(--Encre)">Tape <strong>SUPPRIMER</strong> pour confirmer :</label>
-                <input type="text" id="profil-confirm-delete" class="form-control" style="max-width:260px">
+                <label class="form-label" for="profil-delete-password" style="color:var(--Encre)">Ton mot de passe :</label>
+                <input type="password" id="profil-delete-password" class="form-control" style="max-width:260px" autocomplete="current-password">
               </div>
+              <div class="mb-3">
+                <label class="form-label" for="profil-confirm-delete" style="color:var(--Encre)">Tape <strong>SUPPRIMER</strong> pour confirmer :</label>
+                <input type="text" id="profil-confirm-delete" class="form-control" style="max-width:260px" autocomplete="off">
+              </div>
+              <p class="text-danger small d-none" id="profil-delete-erreur" role="alert"></p>
               <button type="button" id="btn-profil-delete" class="btn btn-outline-danger">Supprimer définitivement mon compte</button>
             </div>
           </div>
@@ -185,3 +197,41 @@
     </div>
   </div>
 </section>
+
+<!-- Modale : modifier une de mes commandes (possible tant qu'elle est "En attente") -->
+<div class="modal fade" id="modifCommandeModal" tabindex="-1" aria-labelledby="modifCommandeTitre" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title h5" id="modifCommandeTitre">Modifier ma commande</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">Le menu ne peut pas être changé. Le prix est recalculé automatiquement.</p>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label" for="modif-date">Date de prestation :</label>
+            <input type="date" id="modif-date" class="form-control">
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="modif-heure">Heure de livraison :</label>
+            <input type="time" id="modif-heure" class="form-control">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="modif-adresse">Adresse de livraison :</label>
+          <input type="text" id="modif-adresse" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="modif-personnes">Nombre de personnes :</label>
+          <input type="number" id="modif-personnes" class="form-control" min="1">
+          <small class="text-muted" id="modif-personnes-info"></small>
+        </div>
+        <p class="text-danger d-none mb-0" id="modif-erreur" role="alert"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-connexion" id="btn-modif-commande-enregistrer">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>

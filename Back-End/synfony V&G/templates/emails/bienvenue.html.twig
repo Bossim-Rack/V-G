@@ -1,0 +1,9 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Bienvenue {{ user.firstName }} !</h1>
+    <p>Merci d'avoir créé votre compte chez <strong>Vite &amp; Gourmand</strong>. Vous allez pouvoir découvrir nos menus, commander pour tous vos événements et suivre vos commandes depuis votre espace.</p>
+    <p>Pour activer votre compte, confirmez simplement votre adresse email :</p>
+    {% include 'emails/_bouton.html.twig' with {lien: lien, texte: 'Confirmer mon adresse email'} %}
+    <p style="font-size:13px;color:#6b6b6b;">Ce lien est valable 48 heures. Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message.</p>
+    <p>À très vite,<br>Julie &amp; José</p>
+{% endblock %}

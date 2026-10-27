@@ -47,7 +47,7 @@ async function chargerInitialesNavbar() {
   if (!token || !initialesEl) return;
 
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/account/me", {
+    const reponse = await fetch(API_URL + "/account/me", {
       method: "GET",
       headers: {
         "X-AUTH-TOKEN": token

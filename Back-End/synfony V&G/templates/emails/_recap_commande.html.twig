@@ -1,0 +1,12 @@
+{% set menu = commande.menu %}
+{% set prixMenu = commande.prixMenu * commande.nombrePersonne %}
+<table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin:16px 0;">
+    <tr style="background:#f0ebe3;"><td colspan="2"><strong>Commande n°{{ commande.id }}</strong></td></tr>
+    <tr><td>Menu</td><td style="text-align:right;">{{ menu.titleMenu }}</td></tr>
+    <tr><td>Date de la prestation</td><td style="text-align:right;">{{ commande.datePrestation ? commande.datePrestation|date('d/m/Y') : '-' }}{{ commande.heureLivraison ? ' à ' ~ commande.heureLivraison : '' }}</td></tr>
+    <tr><td>Adresse de livraison</td><td style="text-align:right;">{{ commande.adresse }}</td></tr>
+    <tr><td>Nombre de personnes</td><td style="text-align:right;">{{ commande.nombrePersonne }}</td></tr>
+    <tr><td>Prix du menu ({{ commande.prixMenu|number_format(2, ',', ' ') }} € / pers.)</td><td style="text-align:right;">{{ prixMenu|number_format(2, ',', ' ') }} €</td></tr>
+    <tr><td>Livraison</td><td style="text-align:right;">{{ commande.prixLivraison > 0 ? commande.prixLivraison|number_format(2, ',', ' ') ~ ' €' : 'Offerte (Bordeaux)' }}</td></tr>
+    <tr style="border-top:2px solid #3d4a3a;"><td><strong>Total</strong></td><td style="text-align:right;"><strong>{{ commande.montantTotal|number_format(2, ',', ' ') }} €</strong></td></tr>
+</table>

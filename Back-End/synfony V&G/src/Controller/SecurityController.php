@@ -2,7 +2,13 @@
 
 namespace App\Controller;
 
+use App\Entity\Commande;
 use App\Entity\User;
+use App\Repository\AvisRepository;
+use App\Repository\CommandeRepository;
+use App\Repository\RoleRepository;
+use App\Repository\UserRepository;
+use App\Service\MailerService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Annotations as OA;
@@ -11,36 +17,43 @@ use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use App\Repository\RoleRepository;
-use App\Repository\UserRepository;
 
 #[Route('/api', name: 'app_api_')]
 class SecurityController extends AbstractController
 {
+    // Durée de validité des liens envoyés par mail.
+    private const DUREE_LIEN_VERIFICATION = '+48 hours';
+    private const DUREE_LIEN_REINITIALISATION = '+1 hour';
+
+    // Rôles qu'un administrateur peut attribuer depuis l'application :
+    // il ne doit PAS être possible de créer un compte Administrateur depuis l'application.
+    private const ROLES_ATTRIBUABLES = ['Client', 'Employé'];
+
     public function __construct(
         private EntityManagerInterface $manager,
-        private SerializerInterface $serializer,
         private UserPasswordHasherInterface $passwordHasher,
         private RoleRepository $roleRepository,
+        private UserRepository $userRepository,
         private ValidatorInterface $validator,
+        private MailerService $mailerService,
     ) {
     }
 
     /**
-     * Valide l'entité et renvoie une réponse 400 avec le détail des erreurs si besoin.
+     * Valide l'entité (avec les groupes demandés) et renvoie une réponse 400 avec le détail des erreurs si besoin.
      * Retourne null si tout est valide (=> on peut continuer le traitement).
      */
-    private function validateOrGetErrorResponse(User $user): ?JsonResponse
+    private function validateOrGetErrorResponse(User $user, array $groups = ['Default']): ?JsonResponse
     {
-        $errors = $this->validator->validate($user);
+        $errors = $this->validator->validate($user, null, $groups);
 
         if (count($errors) > 0) {
             $errorMessages = [];
             foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
+                $champ = $error->getPropertyPath() === 'plainPassword' ? 'password' : $error->getPropertyPath();
+                // On garde le premier message par champ (le plus parlant).
+                $errorMessages[$champ] ??= $error->getMessage();
             }
 
             return new JsonResponse(['errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
@@ -49,56 +62,165 @@ class SecurityController extends AbstractController
         return null;
     }
 
+    /** Lit le corps JSON de la requête (tableau vide si absent ou invalide). */
+    private function lireJson(Request $request): array
+    {
+        $data = json_decode($request->getContent(), true);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Génère un jeton aléatoire à envoyer par mail.
+     * Retourne [jeton en clair (pour le lien), empreinte SHA-256 (pour la base)].
+     */
+    private function genererJeton(): array
+    {
+        $jeton = bin2hex(random_bytes(32));
+
+        return [$jeton, hash('sha256', $jeton)];
+    }
+
+    /** Hashe le mot de passe en clair validé, puis l'efface de la mémoire. */
+    private function appliquerMotDePasse(User $user): void
+    {
+        $user->setPassword($this->passwordHasher->hashPassword($user, (string) $user->getPlainPassword()));
+        $user->eraseCredentials();
+    }
+
+    /** Ce qui est renvoyé au front pour un compte : jamais le hash du mot de passe ni les jetons. */
+    private function userToArray(User $user): array
+    {
+        return [
+            'id' => $user->getId(),
+            'firstName' => $user->getFirstName(),
+            'lastName' => $user->getLastName(),
+            'email' => $user->getEmail(),
+            'phoneNumber' => $user->getphoneNumber(),
+            'adresse' => $user->getAdresse(),
+            'allergy' => $user->getAllergy(),
+            'role' => $user->getRole() ? ['id' => $user->getRole()->getId(), 'libelle' => $user->getRole()->getLibelle()] : null,
+            'roles' => $user->getRoles(),
+            'createdAt' => $user->getCreatedAt()?->format('Y-m-d H:i:s'),
+            'isVerified' => $user->isVerified(),
+            'isActive' => $user->isActive(),
+        ];
+    }
+
     #[Route('/registration', name: 'registration', methods: 'POST')]
     /** @OA\Post(
      *     path="/api/registration",
-     *     summary="Inscription d'un nouvel utilisateur",
+     *     summary="Inscription d'un nouvel utilisateur (rôle Client). Un mail de bienvenue contenant un lien de confirmation est envoyé.",
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Données de l'utilisateur à inscrire",
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="firstName", type="string", example="Thomas"),
      *             @OA\Property(property="lastName", type="string", example="Dupont"),
      *             @OA\Property(property="email", type="string", example="thomas@email.com"),
-     *             @OA\Property(property="password", type="string", example="Mot de passe")
+     *             @OA\Property(property="phoneNumber", type="string", example="0612345678"),
+     *             @OA\Property(property="adresse", type="string", example="12 rue Sainte-Catherine, 33000 Bordeaux"),
+     *             @OA\Property(property="password", type="string", example="MotDePasse1!")
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Utilisateur inscrit avec succès",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="user", type="string", example="Nom d'utilisateur"),
-     *             @OA\Property(property="apiToken", type="string", example="31a023e212f116124a36af14ea0c1c3806eb9378"),
-     *             @OA\Property(property="roles", type="array", @OA\Items(type="string", example="ROLE_USER"))
-     *         )
-     *     )
+     *     @OA\Response(response=201, description="Compte créé : l'utilisateur doit confirmer son email avant de se connecter"),
+     *     @OA\Response(response=400, description="Données invalides"),
+     *     @OA\Response(response=409, description="Un compte existe déjà avec cet email")
      * )
      */
     public function register(Request $request): JsonResponse
-{
-    $user = $this->serializer->deserialize($request->getContent(), User::class, 'json');
+    {
+        $data = $this->lireJson($request);
 
-    // Validation AVANT le hashage : sinon le mot de passe validé serait le hash, pas la saisie utilisateur.
-    if ($errorResponse = $this->validateOrGetErrorResponse($user)) {
-        return $errorResponse;
+        // Champs recopiés un par un (et non désérialisés) : le client ne peut pas
+        // s'attribuer un rôle, un jeton, ou se déclarer "vérifié".
+        $user = (new User())
+            ->setFirstName(trim((string) ($data['firstName'] ?? '')))
+            ->setLastName(trim((string) ($data['lastName'] ?? '')))
+            ->setEmail(mb_strtolower(trim((string) ($data['email'] ?? ''))))
+            ->setphoneNumber($this->normaliserTelephone($data['phoneNumber'] ?? null))
+            ->setAdresse(trim((string) ($data['adresse'] ?? '')) ?: null)
+            ->setPlainPassword((string) ($data['password'] ?? ''));
+
+        if ($errorResponse = $this->validateOrGetErrorResponse($user, ['Default', 'registration', 'password'])) {
+            return $errorResponse;
+        }
+
+        if ($this->userRepository->findOneBy(['email' => $user->getEmail()])) {
+            return new JsonResponse(['errors' => ['email' => 'Un compte existe déjà avec cet email.']], Response::HTTP_CONFLICT);
+        }
+
+        $this->appliquerMotDePasse($user);
+        $user->setCreatedAt(new DateTimeImmutable());
+        $user->setRole($this->roleRepository->findOneBy(['libelle' => 'Client']));
+        $user->setIsVerified(false);
+
+        [$jeton, $empreinte] = $this->genererJeton();
+        $user->setEmailVerificationToken($empreinte, new DateTimeImmutable(self::DUREE_LIEN_VERIFICATION));
+
+        $this->manager->persist($user);
+        $this->manager->flush();
+
+        $mailEnvoye = $this->mailerService->envoyerBienvenue($user, $jeton);
+
+        return new JsonResponse([
+            'message' => 'Compte créé ! Un email de confirmation vient de vous être envoyé : cliquez sur le lien pour activer votre compte.',
+            'user' => $user->getUserIdentifier(),
+            'mailEnvoye' => $mailEnvoye,
+        ], Response::HTTP_CREATED);
     }
 
-    $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPassword()));
-    $user->setCreatedAt(new DateTimeImmutable());
+    #[Route('/verify-email', name: 'verify_email', methods: 'POST')]
+    /** @OA\Post(
+     *     path="/api/verify-email",
+     *     summary="Confirme l'adresse email à partir du jeton reçu par mail",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(type="object", @OA\Property(property="token", type="string"))),
+     *     @OA\Response(response=200, description="Adresse confirmée"),
+     *     @OA\Response(response=400, description="Lien invalide ou expiré")
+     * )
+     */
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $jeton = (string) ($this->lireJson($request)['token'] ?? '');
+        $user = $jeton !== '' ? $this->userRepository->findOneBy(['emailVerificationTokenHash' => hash('sha256', $jeton)]) : null;
 
-    $roleClient = $this->roleRepository->findOneBy(['libelle' => 'Client']);
-    $user->setRole($roleClient);
+        if (!$user || !$user->getEmailVerificationExpiresAt() || $user->getEmailVerificationExpiresAt() < new DateTimeImmutable()) {
+            return new JsonResponse(
+                ['message' => 'Ce lien de confirmation est invalide ou a expiré. Demandez-en un nouveau depuis la page de connexion.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
 
-    $this->manager->persist($user);
-    $this->manager->flush();
+        $user->setIsVerified(true);
+        $user->setEmailVerificationToken(null, null);
+        $user->setUpdatedAt(new DateTimeImmutable());
+        $this->manager->flush();
 
-    return new JsonResponse(
-        ['user' => $user->getUserIdentifier(), 'apiToken' => $user->getApiToken(), 'roles' => $user->getRoles()],
-        Response::HTTP_CREATED
-    );
-}
+        return new JsonResponse(['message' => 'Votre adresse email est confirmée. Vous pouvez maintenant vous connecter.']);
+    }
+
+    #[Route('/resend-verification', name: 'resend_verification', methods: 'POST')]
+    /** @OA\Post(
+     *     path="/api/resend-verification",
+     *     summary="Renvoie un lien de confirmation d'email (réponse volontairement identique que le compte existe ou non)",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(type="object", @OA\Property(property="email", type="string"))),
+     *     @OA\Response(response=200, description="Demande prise en compte")
+     * )
+     */
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $email = mb_strtolower(trim((string) ($this->lireJson($request)['email'] ?? '')));
+        $user = $email !== '' ? $this->userRepository->findOneBy(['email' => $email]) : null;
+
+        if ($user && !$user->isVerified() && $user->isActive()) {
+            [$jeton, $empreinte] = $this->genererJeton();
+            $user->setEmailVerificationToken($empreinte, new DateTimeImmutable(self::DUREE_LIEN_VERIFICATION));
+            $this->manager->flush();
+            $this->mailerService->envoyerVerification($user, $jeton);
+        }
+
+        return new JsonResponse(['message' => "Si un compte non confirmé existe avec cet email, un nouveau lien vient d'être envoyé."]);
+    }
 
     #[Route('/login', name: 'login', methods: 'POST')]
     /** @OA\Post(
@@ -115,14 +237,8 @@ class SecurityController extends AbstractController
      *              )
      *          )
      *      ),
-     *      @OA\Response(
-     *          response=200,
-     *          description="Connexion réussie",
-     *          @OA\JsonContent(
-     *              type="object",
-     *              @OA\Property(property="X-AUTH-TOKEN", type="string")
-     *          )
-     *      )
+     *      @OA\Response(response=200, description="Connexion réussie"),
+     *      @OA\Response(response=401, description="Identifiants invalides, email non confirmé ou compte désactivé (voir le champ error)")
      * )
      */
     public function login(#[CurrentUser] ?User $user): JsonResponse
@@ -141,378 +257,463 @@ class SecurityController extends AbstractController
     #[Route('/account/me', name: 'me', methods: 'GET')]
     /** @OA\Get(
      *     path="/api/account/me",
-     *     summary="Récupérer toutes les informations de l'objet User",
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tous les champs utilisateurs retournés",
-     *     )
+     *     summary="Informations du compte connecté (sans mot de passe ni jeton)",
+     *     @OA\Response(response=200, description="Informations du compte")
      * )
      */
     public function me(): JsonResponse
     {
+        /** @var User $user */
         $user = $this->getUser();
 
-        $responseData = $this->serializer->serialize($user, 'json');
-
-        return new JsonResponse($responseData, Response::HTTP_OK, [], true);
+        return new JsonResponse($this->userToArray($user), Response::HTTP_OK);
     }
 
     #[Route('/account/edit', name: 'edit', methods: 'PUT')]
     /** @OA\Put(
      *     path="/api/account/edit",
-     *     summary="Modifier son compte utilisateur avec l'un ou tous les champs",
+     *     summary="Modifier son compte. Seuls firstName, lastName, phoneNumber, adresse, allergy et password (avec currentPassword) sont pris en compte.",
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Nouvelles données éventuelles de l'utilisateur à mettre à jour",
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="firstName", type="string", example="Nouveau prénom"),
+     *             @OA\Property(property="password", type="string", example="NouveauMdp1!"),
+     *             @OA\Property(property="currentPassword", type="string", example="AncienMdp1!")
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=204,
-     *         description="Utilisateur modifié avec succès"
-     *     )
+     *     @OA\Response(response=204, description="Compte modifié avec succès"),
+     *     @OA\Response(response=400, description="Données invalides ou mot de passe actuel incorrect")
      * )
      */
     public function edit(Request $request): JsonResponse
     {
-    $data = $request->toArray();
-    $currentUser = $this->getUser();
+        $data = $this->lireJson($request);
+        /** @var User $user */
+        $user = $this->getUser();
+        $groups = ['Default'];
 
-    // Si on demande un changement de mot de passe, on vérifie l'ancien AVANT toute désérialisation
-    // (sinon $currentUser->getPassword() sera déjà écrasé par le nouveau mot de passe en clair)
-    if (isset($data['password'])) {
-        if (empty($data['currentPassword']) || !$this->passwordHasher->isPasswordValid($currentUser, $data['currentPassword'])) {
-            return new JsonResponse(['errors' => ['currentPassword' => 'Mot de passe actuel incorrect.']], Response::HTTP_BAD_REQUEST);
+        // Liste blanche : email, rôle, jeton, statut de vérification... ne sont jamais modifiables ici.
+        if (array_key_exists('firstName', $data)) {
+            $user->setFirstName(trim((string) $data['firstName']));
         }
-    }
-
-    $user = $this->serializer->deserialize(
-        $request->getContent(),
-        User::class,
-        'json',
-        [AbstractNormalizer::OBJECT_TO_POPULATE => $currentUser],
-    );
-
-    if ($errorResponse = $this->validateOrGetErrorResponse($user)) {
-        return $errorResponse;
-    }
-
-    $user->setUpdatedAt(new DateTimeImmutable());
-
-    if (isset($data['password'])) {
-        $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPassword()));
-    }
-
-    $this->manager->flush();
-
-    return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-}
-#[Route('/forgot-password', name: 'forgot_password', methods: 'POST')]
-/** @OA\Post(
- *     path="/api/forgot-password",
- *     summary="Réinitialiser son mot de passe via l'email du compte",
- *     description="Aucun envoi d'email n'est effectué (pas de transport mail configuré dans ce projet) : la réinitialisation se fait directement à partir de l'email et du nouveau mot de passe.",
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             type="object",
- *             @OA\Property(property="email", type="string", example="thomas@email.com"),
- *             @OA\Property(property="password", type="string", example="Nouveau mot de passe")
- *         )
- *     ),
- *     @OA\Response(response=200, description="Mot de passe réinitialisé (ou email inconnu, message volontairement générique)"),
- *     @OA\Response(response=400, description="Données manquantes ou mot de passe invalide")
- * )
- */
-public function forgotPassword(Request $request, UserRepository $userRepository): JsonResponse
-{
-    $data = json_decode($request->getContent(), true) ?? [];
-    $email = $data['email'] ?? null;
-    $newPassword = $data['password'] ?? null;
-
-    if (!$email || !$newPassword) {
-        return new JsonResponse(['message' => 'Email et nouveau mot de passe requis.'], Response::HTTP_BAD_REQUEST);
-    }
-
-    $user = $userRepository->findOneBy(['email' => $email]);
-    if (!$user) {
-        // Message volontairement générique : on ne confirme pas si un compte existe pour cet email.
-        return new JsonResponse(['message' => 'Si un compte existe avec cet email, le mot de passe a été réinitialisé.'], Response::HTTP_OK);
-    }
-
-    $user->setPassword($newPassword);
-
-    if ($errorResponse = $this->validateOrGetErrorResponse($user)) {
-        return $errorResponse;
-    }
-
-    $user->setPassword($this->passwordHasher->hashPassword($user, $newPassword));
-    $user->setUpdatedAt(new DateTimeImmutable());
-    $this->manager->flush();
-
-    return new JsonResponse(['message' => 'Mot de passe réinitialisé avec succès.'], Response::HTTP_OK);
-}
-
-#[Route('/user/create-employe', name: 'create_employe', methods: 'POST')]
-/** @OA\Post(
- *     path="/api/user/create-employe",
- *     summary="Créer un compte employé (réservé aux administrateurs)",
- *     @OA\RequestBody(
- *         required=true,
- *         description="Données de l'employé à créer",
- *         @OA\JsonContent(
- *             type="object",
- *             @OA\Property(property="firstName", type="string", example="Sacha"),
- *             @OA\Property(property="lastName", type="string", example="Martin"),
- *             @OA\Property(property="email", type="string", example="sacha.martin@vitegourmand.fr"),
- *             @OA\Property(property="password", type="string", example="Mot de passe")
- *         )
- *     ),
- *     @OA\Response(
- *         response=201,
- *         description="Employé créé avec succès",
- *         @OA\JsonContent(
- *             type="object",
- *             @OA\Property(property="user", type="string", example="Nom d'utilisateur"),
- *             @OA\Property(property="apiToken", type="string", example="31a023e212f116124a36af14ea0c1c3806eb9378"),
- *             @OA\Property(property="roles", type="array", @OA\Items(type="string", example="ROLE_EMPLOYE"))
- *         )
- *     ),
- *     @OA\Response(
- *         response=400,
- *         description="Données invalides"
- *     ),
- *     @OA\Response(
- *         response=403,
- *         description="Accès refusé : réservé aux administrateurs"
- *     )
- * )
- */
-public function createEmploye(Request $request): JsonResponse
-{
-    $user = $this->serializer->deserialize($request->getContent(), User::class, 'json');
-
-    if ($errorResponse = $this->validateOrGetErrorResponse($user)) {
-        return $errorResponse;
-    }
-
-    $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPassword()));
-    $user->setCreatedAt(new DateTimeImmutable());
-
-    $roleEmploye = $this->roleRepository->findOneBy(['libelle' => 'Employé']);
-    $user->setRole($roleEmploye);
-
-    $this->manager->persist($user);
-    $this->manager->flush();
-
-    return new JsonResponse(
-        ['user' => $user->getUserIdentifier(), 'apiToken' => $user->getApiToken(), 'roles' => $user->getRoles()],
-        Response::HTTP_CREATED
-    );
-}
-
-#[Route('/user/count-clients', name: 'count_clients', methods: 'GET')]
-/** @OA\Get(
- *     path="/api/user/count-clients",
- *     summary="Nombre de comptes ayant le rôle Client (réservé admin/employé)",
- *     @OA\Response(
- *         response=200,
- *         description="Nombre de clients inscrits",
- *         @OA\JsonContent(
- *             type="object",
- *             @OA\Property(property="count", type="integer", example=128)
- *         )
- *     ),
- *     @OA\Response(
- *         response=403,
- *         description="Accès refusé : réservé aux employés/administrateurs"
- *     )
- * )
- */
-public function countClients(UserRepository $userRepository): JsonResponse
-{
-    if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_EMPLOYE')) {
-        return new JsonResponse(
-            ['message' => 'Seul un employé ou un administrateur peut consulter cette statistique.'],
-            Response::HTTP_FORBIDDEN
-        );
-    }
-
-    // On ne compte que les comptes "Client" : ni les employés, ni les administrateurs.
-    $roleClient = $this->roleRepository->findOneBy(['libelle' => 'Client']);
-    $count = $roleClient ? $userRepository->count(['role' => $roleClient]) : 0;
-
-    return new JsonResponse(['count' => $count]);
-}
-
-#[Route('/user', name: 'list_users', methods: 'GET')]
-/** @OA\Get(
- *     path="/api/user",
- *     summary="Lister tous les comptes utilisateurs (réservé aux administrateurs)",
- *     @OA\Response(
- *         response=200,
- *         description="Liste de tous les comptes, tous rôles confondus",
- *         @OA\JsonContent(
- *             type="array",
- *             @OA\Items(
- *                 type="object",
- *                 @OA\Property(property="id", type="integer", example=1),
- *                 @OA\Property(property="firstName", type="string", example="Camille"),
- *                 @OA\Property(property="lastName", type="string", example="Client"),
- *                 @OA\Property(property="email", type="string", example="camille@test.fr"),
- *                 @OA\Property(property="role", type="string", example="Client"),
- *                 @OA\Property(property="createdAt", type="string", format="date", example="03/01/2026")
- *             )
- *         )
- *     ),
- *     @OA\Response(
- *         response=403,
- *         description="Accès refusé : réservé aux administrateurs"
- *     )
- * )
- */
-public function listUsers(UserRepository $userRepository): JsonResponse
-{
-    // Cette section du tableau de bord (gestion des comptes) est réservée
-    // aux administrateurs, contrairement aux autres sections accessibles
-    // aux employés.
-    if (!$this->isGranted('ROLE_ADMIN')) {
-        return new JsonResponse(
-            ['message' => 'Seul un administrateur peut consulter la liste des comptes.'],
-            Response::HTTP_FORBIDDEN
-        );
-    }
-
-    $users = $userRepository->findBy([], ['id' => 'DESC']);
-
-    // On ne renvoie jamais le mot de passe hashé ni l'apiToken.
-    $data = array_map(static fn (User $u) => [
-        'id' => $u->getId(),
-        'firstName' => $u->getFirstName(),
-        'lastName' => $u->getLastName(),
-        'email' => $u->getEmail(),
-        'phoneNumber' => $u->getphoneNumber(),
-        'role' => $u->getRole()?->getLibelle(),
-        'createdAt' => $u->getCreatedAt()?->format('d/m/Y'),
-    ], $users);
-
-    return new JsonResponse($data, Response::HTTP_OK);
-}
-
-#[Route('/user/{id}', name: 'edit_user', methods: 'PUT', requirements: ['id' => '\d+'])]
-/** @OA\Put(
- *     path="/api/user/{id}",
- *     summary="Modifier le compte d'un utilisateur par ID (réservé aux administrateurs)",
- *     description="Permet à un administrateur de modifier le prénom, nom, téléphone et rôle d'un compte, depuis le tableau de bord.",
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             type="object",
- *             @OA\Property(property="firstName", type="string", example="Camille"),
- *             @OA\Property(property="lastName", type="string", example="Client"),
- *             @OA\Property(property="phoneNumber", type="string", example="0612345678"),
- *             @OA\Property(property="role", type="string", enum={"Client", "Employé", "Admin"}, example="Employé")
- *         )
- *     ),
- *     @OA\Response(response=204, description="Compte modifié avec succès"),
- *     @OA\Response(response=400, description="Rôle invalide ou données invalides"),
- *     @OA\Response(response=403, description="Accès refusé : réservé aux administrateurs"),
- *     @OA\Response(response=404, description="Compte introuvable")
- * )
- */
-public function editUser(int $id, Request $request, UserRepository $userRepository): JsonResponse
-{
-    if (!$this->isGranted('ROLE_ADMIN')) {
-        return new JsonResponse(
-            ['message' => 'Seul un administrateur peut modifier un compte.'],
-            Response::HTTP_FORBIDDEN
-        );
-    }
-
-    $user = $userRepository->findOneBy(['id' => $id]);
-    if (!$user) {
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
-    }
-
-    $data = json_decode($request->getContent(), true) ?? [];
-
-    if (array_key_exists('firstName', $data) && $data['firstName']) {
-        $user->setFirstName($data['firstName']);
-    }
-    if (array_key_exists('lastName', $data) && $data['lastName']) {
-        $user->setLastName($data['lastName']);
-    }
-    if (array_key_exists('phoneNumber', $data)) {
-        $user->setphoneNumber($data['phoneNumber'] ?: null);
-    }
-    if (array_key_exists('role', $data) && $data['role']) {
-        $role = $this->roleRepository->findOneBy(['libelle' => $data['role']]);
-        if (!$role) {
-            return new JsonResponse(['message' => 'Rôle invalide.'], Response::HTTP_BAD_REQUEST);
+        if (array_key_exists('lastName', $data)) {
+            $user->setLastName(trim((string) $data['lastName']));
         }
-        $user->setRole($role);
-    }
+        if (array_key_exists('phoneNumber', $data)) {
+            $user->setphoneNumber($this->normaliserTelephone($data['phoneNumber']));
+        }
+        if (array_key_exists('adresse', $data)) {
+            $user->setAdresse(trim((string) $data['adresse']) ?: null);
+        }
+        if (array_key_exists('allergy', $data)) {
+            $user->setAllergy(trim((string) $data['allergy']) ?: null);
+        }
 
-    if ($errorResponse = $this->validateOrGetErrorResponse($user)) {
-        return $errorResponse;
-    }
+        if (isset($data['password'])) {
+            if (empty($data['currentPassword']) || !$this->passwordHasher->isPasswordValid($user, (string) $data['currentPassword'])) {
+                $this->manager->refresh($user);
 
-    $user->setUpdatedAt(new DateTimeImmutable());
-    $this->manager->flush();
+                return new JsonResponse(['errors' => ['currentPassword' => 'Mot de passe actuel incorrect.']], Response::HTTP_BAD_REQUEST);
+            }
+            $user->setPlainPassword((string) $data['password']);
+            $groups[] = 'password';
+        }
 
-    return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-}
+        if ($errorResponse = $this->validateOrGetErrorResponse($user, $groups)) {
+            // On annule les modifications en mémoire pour ne rien enregistrer par erreur.
+            $this->manager->refresh($user);
 
-#[Route('/user/{id}', name: 'delete_user', methods: 'DELETE', requirements: ['id' => '\d+'])]
-/** @OA\Delete(
- *     path="/api/user/{id}",
- *     summary="Supprimer le compte d'un utilisateur par ID (réservé aux administrateurs)",
- *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
- *     @OA\Response(response=204, description="Compte supprimé avec succès"),
- *     @OA\Response(response=400, description="Un administrateur ne peut pas supprimer son propre compte depuis cet écran"),
- *     @OA\Response(response=403, description="Accès refusé : réservé aux administrateurs"),
- *     @OA\Response(response=404, description="Compte introuvable"),
- *     @OA\Response(response=409, description="Suppression impossible : des commandes et/ou avis sont liés à ce compte")
- * )
- */
-public function deleteUser(int $id, UserRepository $userRepository): JsonResponse
-{
-    if (!$this->isGranted('ROLE_ADMIN')) {
-        return new JsonResponse(
-            ['message' => 'Seul un administrateur peut supprimer un compte.'],
-            Response::HTTP_FORBIDDEN
-        );
-    }
+            return $errorResponse;
+        }
 
-    $user = $userRepository->findOneBy(['id' => $id]);
-    if (!$user) {
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
-    }
+        if ($user->getPlainPassword()) {
+            $this->appliquerMotDePasse($user);
+        }
 
-    // Empêche un admin de se supprimer lui-même depuis cet écran (il se
-    // retrouverait déconnecté en plein milieu de la gestion des comptes).
-    if ($this->getUser() && $user->getId() === $this->getUser()->getId()) {
-        return new JsonResponse(
-            ['message' => 'Vous ne pouvez pas supprimer votre propre compte depuis cet écran.'],
-            Response::HTTP_BAD_REQUEST
-        );
-    }
-
-    try {
-        $this->manager->remove($user);
+        $user->setUpdatedAt(new DateTimeImmutable());
         $this->manager->flush();
-    } catch (\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) {
-        // Pas de suppression en cascade en base (commande/avis référencent user_id
-        // sans ON DELETE CASCADE) : on renvoie un message clair plutôt qu'un 500.
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/forgot-password', name: 'forgot_password', methods: 'POST')]
+    /** @OA\Post(
+     *     path="/api/forgot-password",
+     *     summary="Demande de réinitialisation : envoie par mail un lien valable 1 heure",
+     *     description="La réponse est toujours la même, que le compte existe ou non (on ne révèle pas quels emails sont inscrits).",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(type="object", @OA\Property(property="email", type="string", example="thomas@email.com"))),
+     *     @OA\Response(response=200, description="Demande prise en compte")
+     * )
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $email = mb_strtolower(trim((string) ($this->lireJson($request)['email'] ?? '')));
+
+        if ($email === '') {
+            return new JsonResponse(['message' => "L'email est obligatoire."], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $this->userRepository->findOneBy(['email' => $email]);
+        if ($user && $user->isActive()) {
+            [$jeton, $empreinte] = $this->genererJeton();
+            $user->setResetPasswordToken($empreinte, new DateTimeImmutable(self::DUREE_LIEN_REINITIALISATION));
+            $this->manager->flush();
+            $this->mailerService->envoyerReinitialisationMotDePasse($user, $jeton);
+        }
+
+        return new JsonResponse([
+            'message' => "Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé. Il est valable 1 heure.",
+        ]);
+    }
+
+    #[Route('/reset-password', name: 'reset_password', methods: 'POST')]
+    /** @OA\Post(
+     *     path="/api/reset-password",
+     *     summary="Choisit un nouveau mot de passe à partir du jeton reçu par mail",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="token", type="string"),
+     *             @OA\Property(property="password", type="string", example="NouveauMdp1!")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Mot de passe modifié"),
+     *     @OA\Response(response=400, description="Lien invalide/expiré ou mot de passe trop faible")
+     * )
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $this->lireJson($request);
+        $jeton = (string) ($data['token'] ?? '');
+        $user = $jeton !== '' ? $this->userRepository->findOneBy(['resetPasswordTokenHash' => hash('sha256', $jeton)]) : null;
+
+        if (!$user || !$user->getResetPasswordExpiresAt() || $user->getResetPasswordExpiresAt() < new DateTimeImmutable()) {
+            return new JsonResponse(
+                ['message' => 'Ce lien de réinitialisation est invalide ou a expiré. Faites une nouvelle demande.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $user->setPlainPassword((string) ($data['password'] ?? ''));
+        if ($errorResponse = $this->validateOrGetErrorResponse($user, ['password'])) {
+            return $errorResponse;
+        }
+
+        $this->appliquerMotDePasse($user);
+        // Le lien ne sert qu'une fois, et on déconnecte toutes les sessions ouvertes.
+        $user->setResetPasswordToken(null, null);
+        $user->regenerateApiToken();
+        // On valide le compte avec le liens transferer
+        $user->setIsVerified(true);
+        $user->setEmailVerificationToken(null, null);
+        $user->setUpdatedAt(new DateTimeImmutable());
+        $this->manager->flush();
+
+        return new JsonResponse(['message' => 'Mot de passe modifié. Vous pouvez vous connecter avec votre nouveau mot de passe.']);
+    }
+
+    #[Route('/account', name: 'delete_account', methods: 'DELETE')]
+    /** @OA\Delete(
+     *     path="/api/account",
+     *     summary="Supprimer son propre compte (droit à l'effacement, RGPD)",
+     *     description="Le mot de passe actuel est demandé pour confirmer. Les avis sont supprimés. Si le client a déjà passé des commandes, elles sont conservées (obligations comptables) mais le compte est anonymisé : nom, email, téléphone, adresse et allergies sont effacés et plus personne ne peut s'y connecter. Impossible tant qu'une commande est en cours.",
+     *     @OA\RequestBody(required=true, @OA\JsonContent(type="object", @OA\Property(property="password", type="string"))),
+     *     @OA\Response(response=204, description="Compte supprimé"),
+     *     @OA\Response(response=400, description="Mot de passe incorrect"),
+     *     @OA\Response(response=403, description="Un administrateur ne peut pas supprimer son compte"),
+     *     @OA\Response(response=409, description="Une commande est encore en cours")
+     * )
+     */
+    public function deleteAccount(Request $request, CommandeRepository $commandeRepository, AvisRepository $avisRepository): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $motDePasse = (string) ($this->lireJson($request)['password'] ?? '');
+
+        if ($motDePasse === '' || !$this->passwordHasher->isPasswordValid($user, $motDePasse)) {
+            return new JsonResponse(['errors' => ['password' => 'Mot de passe incorrect.']], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Le seul compte administrateur (José) ne doit pas disparaître depuis l'application.
+        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return new JsonResponse(['message' => 'Un compte administrateur ne peut pas être supprimé depuis l\'application.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $commandes = $commandeRepository->findBy(['user' => $user]);
+        foreach ($commandes as $commande) {
+            if (!in_array($commande->getStatut(), Commande::STATUTS_FINAUX, true)) {
+                return new JsonResponse(
+                    ['message' => 'Vous avez une commande en cours (n°' . $commande->getId() . ') : annulez-la ou attendez qu\'elle soit terminée avant de supprimer votre compte.'],
+                    Response::HTTP_CONFLICT
+                );
+            }
+        }
+
+        foreach ($avisRepository->findBy(['user' => $user]) as $avis) {
+            $this->manager->remove($avis);
+        }
+
+        if (!$commandes) {
+            // Aucune commande : on efface réellement le compte.
+            $this->manager->remove($user);
+        } else {
+            // Des commandes existent (factures à conserver) : on anonymise le compte (mail fictif).
+            $user->setFirstName('Utilisateur')
+                ->setLastName('Supprimé')
+                ->setEmail('supprime-' . $user->getId() . '@compte-supprime.invalid')
+                ->setphoneNumber(null)
+                ->setAdresse(null)
+                ->setAllergy(null)
+                ->setPassword(bin2hex(random_bytes(32)))
+                ->setIsActive(false)
+                ->setEmailVerificationToken(null, null)
+                ->setResetPasswordToken(null, null)
+                ->regenerateApiToken()
+                ->setUpdatedAt(new DateTimeImmutable());
+        }
+
+        $this->manager->flush();
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/user/create-employe', name: 'create_employe', methods: 'POST')]
+    /** @OA\Post(
+     *     path="/api/user/create-employe",
+     *     summary="Créer un compte employé (réservé aux administrateurs). L'employé reçoit un mail, sans son mot de passe.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="firstName", type="string", example="Sacha"),
+     *             @OA\Property(property="lastName", type="string", example="Martin"),
+     *             @OA\Property(property="email", type="string", example="sacha.martin@vitegourmand.fr"),
+     *             @OA\Property(property="password", type="string", example="MotDePasse1!")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Employé créé avec succès"),
+     *     @OA\Response(response=400, description="Données invalides"),
+     *     @OA\Response(response=403, description="Accès refusé : réservé aux administrateurs"),
+     *     @OA\Response(response=409, description="Un compte existe déjà avec cet email")
+     * )
+     */
+    public function createEmploye(Request $request): JsonResponse
+    {
+        $data = $this->lireJson($request);
+
+        $user = (new User())
+            ->setFirstName(trim((string) ($data['firstName'] ?? '')))
+            ->setLastName(trim((string) ($data['lastName'] ?? '')))
+            ->setEmail(mb_strtolower(trim((string) ($data['email'] ?? ''))))
+            ->setPlainPassword((string) ($data['password'] ?? ''));
+
+        if ($errorResponse = $this->validateOrGetErrorResponse($user, ['Default', 'password'])) {
+            return $errorResponse;
+        }
+
+        if ($this->userRepository->findOneBy(['email' => $user->getEmail()])) {
+            return new JsonResponse(['errors' => ['email' => 'Un compte existe déjà avec cet email.']], Response::HTTP_CONFLICT);
+        }
+
+        $this->appliquerMotDePasse($user);
+        $user->setCreatedAt(new DateTimeImmutable());
+        $user->setRole($this->roleRepository->findOneBy(['libelle' => 'Employé']));
+        // Compte créé par l'administrateur : pas d'étape de confirmation d'email.
+        $user->setIsVerified(true);
+
+        $this->manager->persist($user);
+        $this->manager->flush();
+
+        $mailEnvoye = $this->mailerService->envoyerCompteEmployeCree($user);
+
         return new JsonResponse(
-            ['message' => 'Impossible de supprimer ce compte : il a des commandes et/ou des avis liés.'],
-            Response::HTTP_CONFLICT
+            ['user' => $user->getUserIdentifier(), 'roles' => $user->getRoles(), 'mailEnvoye' => $mailEnvoye],
+            Response::HTTP_CREATED
         );
     }
 
-    return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-}
+    #[Route('/user/count-clients', name: 'count_clients', methods: 'GET')]
+    /** @OA\Get(
+     *     path="/api/user/count-clients",
+     *     summary="Nombre de comptes ayant le rôle Client (réservé admin/employé)",
+     *     @OA\Response(response=200, description="Nombre de clients inscrits"),
+     *     @OA\Response(response=403, description="Accès refusé : réservé aux employés/administrateurs")
+     * )
+     */
+    public function countClients(): JsonResponse
+    {
+        // On ne compte que les comptes "Client" : ni les employés, ni les administrateurs.
+        $roleClient = $this->roleRepository->findOneBy(['libelle' => 'Client']);
+        $count = $roleClient ? $this->userRepository->count(['role' => $roleClient]) : 0;
+
+        return new JsonResponse(['count' => $count]);
+    }
+
+    #[Route('/user', name: 'list_users', methods: 'GET')]
+    /** @OA\Get(
+     *     path="/api/user",
+     *     summary="Lister tous les comptes utilisateurs (réservé aux administrateurs)",
+     *     @OA\Response(response=200, description="Liste de tous les comptes, tous rôles confondus"),
+     *     @OA\Response(response=403, description="Accès refusé : réservé aux administrateurs")
+     * )
+     */
+    public function listUsers(): JsonResponse
+    {
+        $users = $this->userRepository->findBy([], ['id' => 'DESC']);
+
+        // On ne renvoie jamais le mot de passe hashé ni l'apiToken.
+        $data = array_map(static fn (User $u) => [
+            'id' => $u->getId(),
+            'firstName' => $u->getFirstName(),
+            'lastName' => $u->getLastName(),
+            'email' => $u->getEmail(),
+            'phoneNumber' => $u->getphoneNumber(),
+            'role' => $u->getRole()?->getLibelle(),
+            'createdAt' => $u->getCreatedAt()?->format('d/m/Y'),
+            'isActive' => $u->isActive(),
+            'isVerified' => $u->isVerified(),
+        ], $users);
+
+        return new JsonResponse($data, Response::HTTP_OK);
+    }
+
+    #[Route('/user/{id}', name: 'edit_user', methods: 'PUT', requirements: ['id' => '\d+'])]
+    /** @OA\Put(
+     *     path="/api/user/{id}",
+     *     summary="Modifier un compte (réservé aux administrateurs) : prénom, nom, téléphone, rôle (Client/Employé) et activation",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="firstName", type="string", example="Camille"),
+     *             @OA\Property(property="lastName", type="string", example="Client"),
+     *             @OA\Property(property="phoneNumber", type="string", example="0612345678"),
+     *             @OA\Property(property="role", type="string", enum={"Client", "Employé"}, example="Employé"),
+     *             @OA\Property(property="isActive", type="boolean", example=false)
+     *         )
+     *     ),
+     *     @OA\Response(response=204, description="Compte modifié avec succès"),
+     *     @OA\Response(response=400, description="Rôle invalide ou données invalides"),
+     *     @OA\Response(response=403, description="Accès refusé"),
+     *     @OA\Response(response=404, description="Compte introuvable")
+     * )
+     */
+    public function editUser(int $id, Request $request): JsonResponse
+    {
+        $user = $this->userRepository->find($id);
+        if (!$user) {
+            return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        }
+
+        $data = $this->lireJson($request);
+        $estAdmin = in_array('ROLE_ADMIN', $user->getRoles(), true);
+        $estSoiMeme = $this->getUser() instanceof User && $this->getUser()->getId() === $user->getId();
+
+        if (array_key_exists('firstName', $data) && $data['firstName']) {
+            $user->setFirstName(trim((string) $data['firstName']));
+        }
+        if (array_key_exists('lastName', $data) && $data['lastName']) {
+            $user->setLastName(trim((string) $data['lastName']));
+        }
+        if (array_key_exists('phoneNumber', $data)) {
+            $user->setphoneNumber($this->normaliserTelephone($data['phoneNumber']));
+        }
+
+        if (array_key_exists('role', $data) && $data['role'] && $data['role'] !== $user->getRole()?->getLibelle()) {
+            if ($estAdmin) {
+                $this->manager->refresh($user);
+
+                return new JsonResponse(['message' => "Le rôle d'un administrateur ne peut pas être modifié depuis l'application."], Response::HTTP_FORBIDDEN);
+            }
+            if (!in_array($data['role'], self::ROLES_ATTRIBUABLES, true)) {
+                $this->manager->refresh($user);
+
+                return new JsonResponse(
+                    ['message' => "Rôle invalide. Il n'est pas possible de créer un administrateur depuis l'application."],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+            $user->setRole($this->roleRepository->findOneBy(['libelle' => $data['role']]));
+        }
+
+        if (array_key_exists('isActive', $data)) {
+            $actif = (bool) $data['isActive'];
+            if (!$actif && ($estAdmin || $estSoiMeme)) {
+                $this->manager->refresh($user);
+
+                return new JsonResponse(['message' => 'Un compte administrateur ne peut pas être désactivé.'], Response::HTTP_BAD_REQUEST);
+            }
+            if ($user->isActive() && !$actif) {
+                // Coupe immédiatement les sessions ouvertes du compte désactivé.
+                $user->regenerateApiToken();
+            }
+            $user->setIsActive($actif);
+        }
+
+        if ($errorResponse = $this->validateOrGetErrorResponse($user)) {
+            $this->manager->refresh($user);
+
+            return $errorResponse;
+        }
+
+        $user->setUpdatedAt(new DateTimeImmutable());
+        $this->manager->flush();
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/user/{id}', name: 'delete_user', methods: 'DELETE', requirements: ['id' => '\d+'])]
+    /** @OA\Delete(
+     *     path="/api/user/{id}",
+     *     summary="Supprimer le compte d'un utilisateur par ID (réservé aux administrateurs)",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=204, description="Compte supprimé avec succès"),
+     *     @OA\Response(response=400, description="Un administrateur ne peut pas supprimer son propre compte depuis cet écran"),
+     *     @OA\Response(response=403, description="Accès refusé : réservé aux administrateurs"),
+     *     @OA\Response(response=404, description="Compte introuvable"),
+     *     @OA\Response(response=409, description="Suppression impossible : des commandes et/ou avis sont liés à ce compte")
+     * )
+     */
+    public function deleteUser(int $id): JsonResponse
+    {
+        $user = $this->userRepository->find($id);
+        if (!$user) {
+            return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        }
+
+        // Empêche un admin de se supprimer lui-même (ou un autre admin) depuis cet écran.
+        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return new JsonResponse(
+                ['message' => 'Un compte administrateur ne peut pas être supprimé depuis cet écran.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        try {
+            $this->manager->remove($user);
+            $this->manager->flush();
+        } catch (\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) {
+            // Pas de suppression en cascade (commande/avis référencent user_id) : message clair plutôt qu'un 500.
+            return new JsonResponse(
+                ['message' => 'Impossible de supprimer ce compte : il a des commandes et/ou des avis liés. Vous pouvez le désactiver à la place.'],
+                Response::HTTP_CONFLICT
+            );
+        }
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** "06 12 34 56 78" ou "+33612345678" -> "0612345678" (null si vide). */
+    private function normaliserTelephone(mixed $telephone): ?string
+    {
+        $telephone = preg_replace('/[\s.\-]/', '', (string) $telephone);
+        if ($telephone === '') {
+            return null;
+        }
+
+        return preg_replace('/^\+33/', '0', $telephone);
+    }
 }

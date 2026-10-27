@@ -10,7 +10,7 @@
         <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
 
           <div>
-            <span class="filtre-label">THÈME</span>
+            <label class="filtre-label" for="filtre-theme">THÈME</label>
             <select id="filtre-theme" class="form-select w-auto d-inline-block ms-2">
               <option value="">Tous les thèmes</option>
             </select>
@@ -22,23 +22,28 @@
             <div class="filtre-prix-slider-wrap mt-1">
               <div class="filtre-prix-track"></div>
               <div class="filtre-prix-fill" id="filtre-prix-fill"></div>
-              <input type="range" id="filtre-prix-min" class="form-range filtre-prix-range" min="0" max="100" step="1" value="0">
-              <input type="range" id="filtre-prix-max" class="form-range filtre-prix-range" min="0" max="100" step="1" value="100">
+              <input type="range" id="filtre-prix-min" aria-label="Prix minimum par personne" class="form-range filtre-prix-range" min="0" max="100" step="1" value="0">
+              <input type="range" id="filtre-prix-max" aria-label="Prix maximum par personne" class="form-range filtre-prix-range" min="0" max="100" step="1" value="100">
             </div>
           </div>
 
           <div>
-            <span class="filtre-label">ALLERGÈNE</span>
+            <label class="filtre-label" for="filtre-allergene">ALLERGÈNE</label>
             <select id="filtre-allergene" class="form-select w-auto d-inline-block ms-2">
               <option value="">Aucun filtre</option>
             </select>
           </div>
 
           <div>
-            <span class="filtre-label">RÉGIME ALIMENTAIRE</span>
+            <label class="filtre-label" for="filtre-regime-alimentaire">RÉGIME ALIMENTAIRE</label>
             <select id="filtre-regime-alimentaire" class="form-select w-auto d-inline-block ms-2">
               <option value="">Tous les régimes</option>
             </select>
+          </div>
+
+          <div>
+            <label class="filtre-label" for="filtre-personnes">NB DE PERSONNES</label>
+            <input type="number" id="filtre-personnes" class="form-control w-auto d-inline-block ms-2" min="1" step="1" placeholder="ex : 12" style="max-width:110px">
           </div>
 
           <button type="button" id="btn-reinitialiser-filtres" class="btn btn-details">Réinitialiser</button>
@@ -64,6 +69,10 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
       </div>
       <div class="modal-body">
+        <div class="alert alert-warning menu-conditions d-none" id="menuDetailModalConditionsWrap" role="note">
+          <p class="mb-1"><i class="bi bi-exclamation-triangle-fill"></i> <strong>Conditions de ce menu — à lire avant de commander :</strong></p>
+          <p class="mb-0" id="menuDetailModalConditions" style="white-space:pre-line"></p>
+        </div>
         <img src="" alt="" class="menu-card-img mb-3 w-100" id="menuDetailModalPhoto">
         <p id="menuDetailModalDescription"></p>
         <p class="mb-1"><i class="bi bi-people-fill"></i> <span id="menuDetailModalMin"></span> personnes minimum</p>
@@ -83,7 +92,7 @@
 
 <!-- Modale de commande -->
 <div class="modal fade" id="commandeModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title" id="commandeModalTitre">Commander un menu</h3>
@@ -91,17 +100,41 @@
       </div>
       <div class="modal-body">
         <form id="commandeForm">
-          <div class="mb-3">
-            <label for="commande-date-prestation" class="form-label">Date de prestation :</label>
-            <input type="date" id="commande-date-prestation" class="form-control" required>
+          <h4 class="h6 text-uppercase text-muted">Vos informations</h4>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="commande-nom" class="form-label">Nom :</label>
+              <input type="text" id="commande-nom" class="form-control" readonly>
+            </div>
+            <div class="col-6">
+              <label for="commande-prenom" class="form-label">Prénom :</label>
+              <input type="text" id="commande-prenom" class="form-control" readonly>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="commande-email" class="form-label">Email :</label>
+              <input type="email" id="commande-email" class="form-control" readonly>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="commande-gsm" class="form-label">GSM :</label>
+              <input type="tel" id="commande-gsm" class="form-control" readonly>
+            </div>
+            <small class="text-muted">Pour modifier ces informations, rendez-vous dans votre profil.</small>
+          </div>
+
+          <h4 class="h6 text-uppercase text-muted">La prestation</h4>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="commande-date-prestation" class="form-label">Date de prestation :</label>
+              <input type="date" id="commande-date-prestation" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label for="commande-heure-livraison" class="form-label">Heure de livraison souhaitée :</label>
+              <input type="time" id="commande-heure-livraison" class="form-control" required>
+            </div>
           </div>
           <div class="mb-3">
-            <label for="commande-heure-livraison" class="form-label">Heure de livraison :</label>
-            <input type="time" id="commande-heure-livraison" class="form-control">
-          </div>
-          <div class="mb-3">
-            <label for="commande-adresse" class="form-label">Adresse de livraison :</label>
-            <input type="text" id="commande-adresse" class="form-control" placeholder="Numéro, rue, ville, code postal" required>
+            <label for="commande-adresse" class="form-label">Lieu de livraison (adresse complète) :</label>
+            <input type="text" id="commande-adresse" class="form-control" placeholder="Numéro, rue, code postal, ville" required>
             <small class="text-muted" id="commande-adresse-info"></small>
           </div>
           <div class="mb-3">
@@ -109,9 +142,25 @@
             <input type="number" id="commande-nombre-personne" class="form-control" min="1" required>
             <small class="text-muted" id="commande-min-personnes-info"></small>
           </div>
-          <p class="mb-0"><strong>Prix estimé :</strong> <span id="commande-prix-estime"></span> €</p>
-          <small class="text-success d-none" id="commande-reduction-info"><i class="bi bi-tag-fill"></i> Réduction de 10% appliquée (5 personnes ou plus au-dessus du minimum).</small>
-          <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Frais de livraison non inclus dans cette estimation : 5€ + 0,59€/km. Le montant définitif vous sera confirmé séparément.</small>
+
+          <div class="commande-recap p-3 mb-3 border rounded" aria-live="polite">
+            <h4 class="h6 mb-2">Détail du prix</h4>
+            <div class="d-flex justify-content-between"><span>Menu (<span id="commande-recap-detail-menu">—</span>)</span><span id="commande-recap-menu">—</span></div>
+            <div class="d-flex justify-content-between text-success d-none" id="commande-reduction-info"><span><i class="bi bi-tag-fill"></i> Réduction de 10 % (5 personnes ou plus au-dessus du minimum)</span><span>incluse</span></div>
+            <div class="d-flex justify-content-between"><span>Livraison <small class="text-muted" id="commande-recap-detail-livraison"></small></span><span id="commande-recap-livraison">—</span></div>
+            <hr class="my-2">
+            <div class="d-flex justify-content-between fw-bold"><span>Total</span><span id="commande-prix-estime">—</span></div>
+            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Livraison offerte à Bordeaux, sinon 5 € + 0,59 €/km.</small>
+          </div>
+
+          <div class="alert alert-warning d-none" id="commande-conditions-wrap">
+            <p class="mb-1"><strong><i class="bi bi-exclamation-triangle-fill"></i> Conditions de ce menu :</strong></p>
+            <p class="mb-2" id="commande-conditions" style="white-space:pre-line"></p>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="commande-conditions-ok">
+              <label class="form-check-label" for="commande-conditions-ok">J'ai lu et j'accepte les conditions de ce menu.</label>
+            </div>
+          </div>
         </form>
         <p class="text-danger d-none mt-3" id="commandeModalError"></p>
         <p class="text-success d-none mt-3" id="commandeModalSuccess"></p>

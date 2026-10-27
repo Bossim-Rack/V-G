@@ -3,36 +3,47 @@
 namespace App\Controller;
 
 use App\Entity\Commande;
+use App\Entity\CommandeHistorique;
+use App\Entity\User;
+use App\Repository\AvisRepository;
 use App\Repository\CommandeRepository;
 use App\Repository\MenuRepository;
+use App\Service\AdresseIntrouvableException;
+use App\Service\MailerService;
+use App\Service\StatsMongoService;
+use App\Service\TarifCommandeService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/commande', name: 'app_api_commande_')]
 class CommandeController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $manager,
-        private SerializerInterface $serializer,
         private CommandeRepository $repository,
         private MenuRepository $menuRepository,
+        private AvisRepository $avisRepository,
+        private TarifCommandeService $tarif,
+        private MailerService $mailerService,
+        private StatsMongoService $statsMongo,
     ) {
     }
 
-    /**
-     * Représentation "plate" et sûre de la commande (évite de renvoyer
-     * l'objet User complet -- password/apiToken -- ou de déclencher les
-     * références circulaires Menu <-> Plat/Theme qu'un
-     * $serializer->serialize() direct provoquerait).
-     */
-    private function commandeToArray(Commande $commande): array
+    private function estStaff(): bool
     {
-        return [
+        return $this->isGranted('ROLE_EMPLOYE');
+    }
+
+    private function commandeToArray(Commande $commande, bool $avecHistorique = true): array
+    {
+        $user = $commande->getUser();
+        $avis = $this->avisRepository->findOneBy(['commande' => $commande]);
+
+        $data = [
             'id' => $commande->getId(),
             'dateCommande' => $commande->getDateCommande()?->format('Y-m-d'),
             'datePrestation' => $commande->getDatePrestation()?->format('Y-m-d'),
@@ -41,52 +52,139 @@ class CommandeController extends AbstractController
             'prixMenu' => $commande->getPrixMenu(),
             'nombrePersonne' => $commande->getNombrePersonne(),
             'prixLivraison' => $commande->getPrixLivraison(),
+            'montantTotal' => $commande->getMontantTotal(),
             'statut' => $commande->getStatut(),
             'pretMateriel' => $commande->isPretMateriel(),
             'restitutionMateriel' => $commande->isRestitutionMateriel(),
+            'motifAnnulation' => $commande->getMotifAnnulation(),
+            'modeContact' => $commande->getModeContact(),
+            // Le client peut annuler/modifier tant qu'un employé n'a pas accepté la commande.
+            'modifiableParClient' => $commande->getStatut() === Commande::STATUT_EN_ATTENTE,
+            'avisDonne' => $avis !== null,
             'menu' => $commande->getMenu() ? [
                 'id' => $commande->getMenu()->getId(),
                 'titleMenu' => $commande->getMenu()->getTitleMenu(),
+                'nombrePersonneMinimum' => $commande->getMenu()->getNombrePersonneMinimum(),
+                'prixParPersonne' => $commande->getMenu()->getPrixParPersonne(),
+                'conditions' => $commande->getMenu()->getConditions(),
             ] : null,
-            'user' => $commande->getUser() ? [
-                'id' => $commande->getUser()->getId(),
-                'firstName' => $commande->getUser()->getFirstName(),
-                'lastName' => $commande->getUser()->getLastName(),
-                'email' => $commande->getUser()->getEmail(),
+            'user' => $user ? [
+                'id' => $user->getId(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+                'email' => $user->getEmail(),
+                'phoneNumber' => $user->getphoneNumber(),
             ] : null,
         ];
+
+        if ($avecHistorique) {
+            $data['historique'] = array_values(array_map(static fn (CommandeHistorique $h) => [
+                'statut' => $h->getStatut(),
+                'date' => $h->getChangedAt()?->format('Y-m-d H:i:s'),
+                'commentaire' => $h->getCommentaire(),
+            ], $commande->getHistoriques()->toArray()));
+        }
+
+        return $data;
+    }
+
+    /** Une commande n'est visible/modifiable que par son client ou par un employé/admin. */
+    private function trouverCommandeAutorisee(int $id): Commande|JsonResponse
+    {
+        $commande = $this->repository->find($id);
+        if (!$commande) {
+            return new JsonResponse(['message' => 'Commande introuvable.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->estStaff() && $commande->getUser() !== $this->getUser()) {
+            // On ne renvoie pas l'erreur 403 qui afficherait un accès refusé et confirmerait que la commande existe. 404 par défaut.
+            return new JsonResponse(['message' => 'Commande introuvable.'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $commande;
+    }
+
+    private function lireJson(Request $request): array
+    {
+        $data = json_decode($request->getContent(), true);
+
+        return is_array($data) ? $data : [];
+    }
+
+    private function lireDatePrestation(mixed $valeur): DateTimeImmutable|JsonResponse
+    {
+        try {
+            $date = new DateTimeImmutable((string) $valeur);
+        } catch (\Exception) {
+            return new JsonResponse(['message' => 'Date de prestation invalide.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($date->setTime(0, 0) < new DateTimeImmutable('today')) {
+            return new JsonResponse(['message' => 'La date de prestation ne peut pas être dans le passé.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $date;
+    }
+
+    private function lireHeure(mixed $valeur): ?string
+    {
+        $heure = trim((string) $valeur);
+
+        return preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $heure) ? $heure : null;
+    }
+
+    /** calcule les prix côté serveur. Renvoie null si ok, sinon une erreur 400 avec le message */
+    private function appliquerTarif(Commande $commande): ?JsonResponse
+    {
+        try {
+            $devis = $this->tarif->calculer($commande->getMenu(), (int) $commande->getNombrePersonne(), (string) $commande->getAdresse());
+        } catch (\InvalidArgumentException|AdresseIntrouvableException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        $commande->setPrixMenu(number_format($devis['prixParPersonneRemise'], 2, '.', ''));
+        $commande->setPrixLivraison(number_format($devis['livraison']['montant'], 2, '.', ''));
+
+        return null;
     }
 
     #[Route(name: 'index', methods: 'GET')]
     /** @OA\Get(
      *     path="/api/commande",
-     *     summary="Lister toutes les commandes (réservé admin/employé, pour le tableau de bord)",
-     *     @OA\Response(response=200, description="Liste des commandes, les plus récentes en premier"),
-     *     @OA\Response(response=403, description="Accès refusé : réservé aux employés/administrateurs")
+     *     summary="Toutes les commandes (employé/admin), filtrables par statut et par client",
+     *     @OA\Parameter(name="statut", in="query", required=false, @OA\Schema(type="string", example="En attente")),
+     *     @OA\Parameter(name="client", in="query", required=false, description="Recherche dans le nom, le prénom ou l'email du client", @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Liste des commandes"),
+     *     @OA\Response(response=403, description="Réservé aux employés/administrateurs")
      * )
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_EMPLOYE')) {
+        if (!$this->estStaff()) {
             return new JsonResponse(
                 ['message' => 'Seul un employé ou un administrateur peut consulter toutes les commandes.'],
                 Response::HTTP_FORBIDDEN
             );
         }
 
-        $commandes = $this->repository->findBy([], ['id' => 'DESC']);
-        $data = array_map(fn (Commande $commande) => $this->commandeToArray($commande), $commandes);
+        $statut = trim((string) $request->query->get('statut', ''));
+        $client = trim((string) $request->query->get('client', ''));
+
+        $commandes = $this->repository->rechercher($statut ?: null, $client ?: null);
+        $data = array_map(fn (Commande $commande) => $this->commandeToArray($commande, false), $commandes);
 
         return new JsonResponse($data, Response::HTTP_OK);
     }
 
+    #[Route('/statuts', name: 'statuts', methods: 'GET')]
+    /** @OA\Get(path="/api/commande/statuts", summary="Liste des statuts possibles d'une commande", @OA\Response(response=200, description="Statuts")) */
+    public function statuts(): JsonResponse
+    {
+        return new JsonResponse(['statuts' => Commande::STATUTS, 'modesContact' => Commande::MODES_CONTACT]);
+    }
+
     #[Route('/me', name: 'mine', methods: 'GET')]
-    /** @OA\Get(
-     *     path="/api/commande/me",
-     *     summary="Lister mes commandes (utilisateur connecté)",
-     *     @OA\Response(response=200, description="Liste de mes commandes, les plus récentes en premier")
-     * )
-     */
+    /** @OA\Get(path="/api/commande/me", summary="Mes commandes, avec leur suivi", @OA\Response(response=200, description="Mes commandes")) */
     public function mine(): JsonResponse
     {
         $commandes = $this->repository->findBy(['user' => $this->getUser()], ['id' => 'DESC']);
@@ -95,193 +193,408 @@ class CommandeController extends AbstractController
         return new JsonResponse($data, Response::HTTP_OK);
     }
 
-    #[Route(methods: 'POST')]
+    #[Route('/devis', name: 'devis', methods: 'POST')]
     /** @OA\Post(
-     *     path="/api/commande",
-     *     summary="Passer une commande pour un menu",
-     *     description="user est déduit automatiquement du compte connecté (X-AUTH-TOKEN), pas envoyé par le client. prixMenu est repris automatiquement du prix actuel du menu (snapshot au moment de la commande), avec une réduction de 10% si nombrePersonne >= (minimum du menu + 5). adresse est obligatoire (pré-remplie côté front depuis le profil si elle y est renseignée, sinon à saisir).",
+     *     path="/api/commande/devis",
+     *     summary="Détail du prix AVANT validation : prix du menu (réduction comprise) + frais de livraison calculés depuis l'adresse",
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
      *             type="object",
-     *             required={"menuId", "adresse"},
      *             @OA\Property(property="menuId", type="integer", example=1),
-     *             @OA\Property(property="datePrestation", type="string", format="date", example="2026-08-15"),
-     *             @OA\Property(property="heureLivraison", type="string", example="19:30"),
-     *             @OA\Property(property="adresse", type="string", example="12 rue des Fauvettes, 33000 Bordeaux"),
-     *             @OA\Property(property="nombrePersonne", type="integer", example=6),
-     *             @OA\Property(property="prixLivraison", type="number", format="float", example=15.00)
+     *             @OA\Property(property="nombrePersonne", type="integer", example=12),
+     *             @OA\Property(property="adresse", type="string", example="5 place de la Victoire, 33000 Bordeaux")
      *         )
      *     ),
-     *     @OA\Response(response=201, description="Commande créée avec succès"),
-     *     @OA\Response(response=400, description="Données invalides (menuId manquant, nombre de personnes insuffisant, date invalide...)"),
-     *     @OA\Response(response=404, description="Menu introuvable")
+     *     @OA\Response(response=200, description="Détail du prix"),
+     *     @OA\Response(response=400, description="Nombre de personnes insuffisant ou adresse introuvable")
      * )
      */
-    public function new(Request $request): JsonResponse
+    public function devis(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true) ?? [];
-
-        if (empty($data['menuId'])) {
-            return new JsonResponse(['message' => 'menuId est obligatoire.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Toujours obligatoire, qu'elle vienne du pré-remplissage (profil) ou d'une saisie
-        // manuelle côté front : une commande a besoin d'une adresse de livraison.
-        if (empty(trim((string) ($data['adresse'] ?? '')))) {
-            return new JsonResponse(['message' => "L'adresse de livraison est obligatoire."], Response::HTTP_BAD_REQUEST);
-        }
-
-        $menu = $this->menuRepository->findOneBy(['id' => $data['menuId']]);
+        $data = $this->lireJson($request);
+        $menu = !empty($data['menuId']) ? $this->menuRepository->find((int) $data['menuId']) : null;
         if (!$menu) {
             return new JsonResponse(['message' => 'Menu introuvable.'], Response::HTTP_NOT_FOUND);
         }
 
-        $nombrePersonne = isset($data['nombrePersonne']) ? (int) $data['nombrePersonne'] : $menu->getNombrePersonneMinimum();
-        if ($nombrePersonne < $menu->getNombrePersonneMinimum()) {
-            return new JsonResponse(
-                ['message' => 'Le nombre de personnes minimum pour ce menu est de ' . $menu->getNombrePersonneMinimum() . '.'],
-                Response::HTTP_BAD_REQUEST
-            );
+        try {
+            $devis = $this->tarif->calculer($menu, (int) ($data['nombrePersonne'] ?? 0), (string) ($data['adresse'] ?? ''));
+        } catch (\InvalidArgumentException|AdresseIntrouvableException $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
-        $datePrestation = null;
-        if (!empty($data['datePrestation'])) {
-            try {
-                $datePrestation = new DateTimeImmutable($data['datePrestation']);
-            } catch (\Exception) {
-                return new JsonResponse(['message' => 'datePrestation invalide.'], Response::HTTP_BAD_REQUEST);
-            }
+        return new JsonResponse($devis);
+    }
+
+    #[Route(methods: 'POST')]
+    /** @OA\Post(
+     *     path="/api/commande",
+     *     summary="Passer une commande",
+     *     description="Le client est l'utilisateur connecté. Les prix (menu, réduction de 10 %, livraison) sont TOUJOURS calculés par le serveur : un prix envoyé par le front est ignoré. Un mail de confirmation est envoyé.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="menuId", type="integer", example=1),
+     *             @OA\Property(property="datePrestation", type="string", format="date", example="2026-12-24"),
+     *             @OA\Property(property="heureLivraison", type="string", example="19:30"),
+     *             @OA\Property(property="adresse", type="string", example="12 rue des Fauvettes, 33000 Bordeaux"),
+     *             @OA\Property(property="nombrePersonne", type="integer", example=10)
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Commande créée"),
+     *     @OA\Response(response=400, description="Données invalides"),
+     *     @OA\Response(response=409, description="Plus de stock pour ce menu")
+     * )
+     */
+    public function new(Request $request): JsonResponse
+    {
+        $data = $this->lireJson($request);
+
+        $menu = !empty($data['menuId']) ? $this->menuRepository->find((int) $data['menuId']) : null;
+        if (!$menu) {
+            return new JsonResponse(['message' => 'Menu introuvable.'], Response::HTTP_NOT_FOUND);
         }
 
-        // Réduction de 10% sur le prix/personne si le nombre de personnes dépasse
-        // le minimum du menu d'au moins 5 (grosse commande = tarif dégressif).
-        $prixParPersonne = (float) $menu->getPrixParPersonne();
-        if ($nombrePersonne >= $menu->getNombrePersonneMinimum() + 5) {
-            $prixParPersonne *= 0.9;
+        $adresse = trim((string) ($data['adresse'] ?? ''));
+        if ($adresse === '') {
+            return new JsonResponse(['message' => "L'adresse de livraison est obligatoire."], Response::HTTP_BAD_REQUEST);
         }
+        if (empty($data['datePrestation'])) {
+            return new JsonResponse(['message' => 'La date de prestation est obligatoire.'], Response::HTTP_BAD_REQUEST);
+        }
+        $datePrestation = $this->lireDatePrestation($data['datePrestation']);
+        if ($datePrestation instanceof JsonResponse) {
+            return $datePrestation;
+        }
+        $heure = $this->lireHeure($data['heureLivraison'] ?? '');
+        if (!$heure) {
+            return new JsonResponse(['message' => "L'heure de livraison souhaitée est obligatoire (format HH:MM)."], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Stock disponible (null = illimité).
+        if ($menu->getQuantiteRestante() !== null && $menu->getQuantiteRestante() <= 0) {
+            return new JsonResponse(['message' => "Ce menu n'est plus disponible à la commande (stock épuisé)."], Response::HTTP_CONFLICT);
+        }
+
+        /** @var User $user */
+        $user = $this->getUser();
 
         $commande = new Commande();
         $commande->setMenu($menu);
-        $commande->setUser($this->getUser());
+        $commande->setUser($user);
         $commande->setDateCommande(new DateTimeImmutable());
         $commande->setDatePrestation($datePrestation);
-        $commande->setHeureLivraison($data['heureLivraison'] ?? null);
-        $commande->setAdresse(trim($data['adresse']));
-        $commande->setNombrePersonne($nombrePersonne);
-        $commande->setPrixMenu(number_format($prixParPersonne, 2, '.', ''));
-        $commande->setPrixLivraison(isset($data['prixLivraison']) ? (string) $data['prixLivraison'] : null);
-        $commande->setStatut('En attente');
+        $commande->setHeureLivraison($heure);
+        $commande->setAdresse($adresse);
+        $commande->setNombrePersonne(isset($data['nombrePersonne']) ? (int) $data['nombrePersonne'] : (int) $menu->getNombrePersonneMinimum());
+        $commande->setPretMateriel(false);
+
+        if ($erreur = $this->appliquerTarif($commande)) {
+            return $erreur;
+        }
+
+        $commande->changerStatut(Commande::STATUT_EN_ATTENTE, 'Commande passée par le client', $user);
+
+        if ($menu->getQuantiteRestante() !== null) {
+            $menu->setQuantiteRestante($menu->getQuantiteRestante() - 1);
+        }
 
         $this->manager->persist($commande);
         $this->manager->flush();
 
-        return new JsonResponse($this->commandeToArray($commande), Response::HTTP_CREATED);
+        $this->statsMongo->synchroniser($commande);
+        $mailEnvoye = $this->mailerService->envoyerConfirmationCommande($commande);
+
+        return new JsonResponse($this->commandeToArray($commande) + ['mailEnvoye' => $mailEnvoye], Response::HTTP_CREATED);
     }
 
     #[Route('/{id}', name: 'edit', methods: 'PUT', requirements: ['id' => '\d+'])]
     /** @OA\Put(
      *     path="/api/commande/{id}",
-     *     summary="Modifier une commande par ID",
-     *     description="Tous les champs sont optionnels. menu et user ne sont pas modifiables ici. Changer le statut est réservé aux admins/employés.",
+     *     summary="Modifier une commande (date, heure, adresse, nombre de personnes). Le menu n'est jamais modifiable.",
+     *     description="Client : uniquement tant que la commande est 'En attente'. Employé : doit avoir contacté le client (modeContact = GSM ou Email + motif obligatoires). Les prix sont recalculés.",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=204, description="Commande modifiée avec succès"),
-     *     @OA\Response(response=403, description="Accès refusé : changement de statut réservé aux employés/administrateurs"),
-     *     @OA\Response(response=404, description="Commande non trouvée")
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="datePrestation", type="string", format="date"),
+     *             @OA\Property(property="heureLivraison", type="string", example="12:00"),
+     *             @OA\Property(property="adresse", type="string"),
+     *             @OA\Property(property="nombrePersonne", type="integer"),
+     *             @OA\Property(property="pretMateriel", type="boolean", description="Employé uniquement"),
+     *             @OA\Property(property="modeContact", type="string", enum={"GSM", "Email"}, description="Employé uniquement"),
+     *             @OA\Property(property="motif", type="string", description="Employé uniquement")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Commande modifiée"),
+     *     @OA\Response(response=400, description="Données invalides"),
+     *     @OA\Response(response=409, description="La commande n'est plus modifiable")
      * )
      */
     public function edit(int $id, Request $request): JsonResponse
     {
-        $commande = $this->repository->findOneBy(['id' => $id]);
-        if (!$commande) {
-            return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        $commande = $this->trouverCommandeAutorisee($id);
+        if ($commande instanceof JsonResponse) {
+            return $commande;
         }
 
-        $data = json_decode($request->getContent(), true) ?? [];
+        $data = $this->lireJson($request);
+        /** @var User $user */
+        $user = $this->getUser();
+        $estStaff = $this->estStaff();
+        $commentaire = 'Commande modifiée par le client';
+
+        if (in_array($commande->getStatut(), Commande::STATUTS_FINAUX, true)) {
+            return new JsonResponse(['message' => 'Cette commande est ' . mb_strtolower($commande->getStatut()) . ' : elle ne peut plus être modifiée.'], Response::HTTP_CONFLICT);
+        }
+
+        if (!$estStaff && $commande->getStatut() !== Commande::STATUT_EN_ATTENTE) {
+            return new JsonResponse(
+                ['message' => 'Votre commande a déjà été acceptée : contactez-nous pour toute modification.'],
+                Response::HTTP_CONFLICT
+            );
+        }
+
+        if (array_key_exists('menuId', $data) && (int) $data['menuId'] !== $commande->getMenu()->getId()) {
+            return new JsonResponse(['message' => "Le menu d'une commande ne peut pas être modifié."], Response::HTTP_BAD_REQUEST);
+        }
+
+        $modifContenu = array_intersect(array_keys($data), ['datePrestation', 'heureLivraison', 'adresse', 'nombrePersonne', 'pretMateriel']);
+
+        if ($estStaff && $modifContenu) {
+            // Contact client avant modification, sécurité pour éviter les conflits client
+            $erreurContact = $this->verifierContactClient($data);
+            if ($erreurContact) {
+                return $erreurContact;
+            }
+            $commentaire = sprintf('Modifiée par un employé après contact du client par %s : %s', $data['modeContact'], trim((string) $data['motif']));
+        }
 
         if (array_key_exists('datePrestation', $data)) {
-            try {
-                $commande->setDatePrestation($data['datePrestation'] ? new DateTimeImmutable($data['datePrestation']) : null);
-            } catch (\Exception) {
-                return new JsonResponse(['message' => 'datePrestation invalide.'], Response::HTTP_BAD_REQUEST);
+            $date = $this->lireDatePrestation($data['datePrestation']);
+            if ($date instanceof JsonResponse) {
+                return $date;
             }
+            $commande->setDatePrestation($date);
         }
         if (array_key_exists('heureLivraison', $data)) {
-            $commande->setHeureLivraison($data['heureLivraison']);
+            $heure = $this->lireHeure($data['heureLivraison']);
+            if (!$heure) {
+                return new JsonResponse(['message' => "L'heure de livraison doit être au format HH:MM."], Response::HTTP_BAD_REQUEST);
+            }
+            $commande->setHeureLivraison($heure);
         }
         if (array_key_exists('adresse', $data)) {
-            if (empty(trim((string) $data['adresse']))) {
+            if (trim((string) $data['adresse']) === '') {
                 return new JsonResponse(['message' => "L'adresse de livraison ne peut pas être vide."], Response::HTTP_BAD_REQUEST);
             }
-            $commande->setAdresse(trim($data['adresse']));
+            $commande->setAdresse(trim((string) $data['adresse']));
         }
         if (array_key_exists('nombrePersonne', $data)) {
-            $commande->setNombrePersonne($data['nombrePersonne'] !== null ? (int) $data['nombrePersonne'] : null);
+            $commande->setNombrePersonne((int) $data['nombrePersonne']);
         }
-        if (array_key_exists('prixLivraison', $data)) {
-            $commande->setPrixLivraison($data['prixLivraison'] !== null ? (string) $data['prixLivraison'] : null);
+        if ($estStaff && array_key_exists('pretMateriel', $data)) {
+            $commande->setPretMateriel((bool) $data['pretMateriel']);
         }
-        if (array_key_exists('statut', $data)) {
-            // Seuls les admins et employés peuvent changer le statut d'une commande
-            // (le client passe commande, mais ne décide pas si elle est confirmée/annulée).
-            if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_EMPLOYE')) {
-                return new JsonResponse(
-                    ['message' => "Seul un employé ou un administrateur peut modifier le statut d'une commande."],
-                    Response::HTTP_FORBIDDEN
-                );
+
+        if (array_intersect(array_keys($data), ['adresse', 'nombrePersonne'])) {
+            if ($erreur = $this->appliquerTarif($commande)) {
+                $this->manager->refresh($commande);
+
+                return $erreur;
             }
-            $commande->setStatut($data['statut']);
         }
-        if (array_key_exists('pretMateriel', $data)) {
-            $commande->setPretMateriel($data['pretMateriel']);
-        }
-        if (array_key_exists('restitutionMateriel', $data)) {
-            $commande->setRestitutionMateriel($data['restitutionMateriel']);
+
+        if ($modifContenu) {
+            // On garde une trace de la modification dans le suivi (même statut).
+            $commande->changerStatut($commande->getStatut(), $commentaire, $user);
         }
 
         $this->manager->flush();
+        $this->statsMongo->synchroniser($commande);
 
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        return new JsonResponse($this->commandeToArray($commande), Response::HTTP_OK);
     }
 
-    #[Route('/{id}', name: 'show', methods: 'GET', requirements: ['id' => '\d+'])]
-    /** @OA\Get(
-     *     path="/api/commande/{id}",
-     *     summary="Afficher une commande par ID",
+    #[Route('/{id}/statut', name: 'statut', methods: 'PUT', requirements: ['id' => '\d+'])]
+    /** @OA\Put(
+     *     path="/api/commande/{id}/statut",
+     *     summary="Faire avancer une commande (employé/admin) : Accepté, En préparation, En cours de livraison, Livré, En attente du retour de matériel, Terminée",
+     *     description="Chaque changement est horodaté dans le suivi. Mails automatiques : rappel matériel (10 jours ouvrés / 600 €) et invitation à donner un avis quand la commande est terminée. Pour annuler, utiliser /annuler.",
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="Commande trouvée avec succès"),
-     *     @OA\Response(response=404, description="Commande non trouvée")
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="statut", type="string", example="Accepté"),
+     *             @OA\Property(property="pretMateriel", type="boolean", example=false),
+     *             @OA\Property(property="commentaire", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Statut mis à jour"),
+     *     @OA\Response(response=400, description="Statut invalide"),
+     *     @OA\Response(response=403, description="Réservé aux employés/administrateurs"),
+     *     @OA\Response(response=409, description="Commande terminée ou annulée")
      * )
      */
-    public function show(int $id): JsonResponse
+    public function changerStatut(int $id, Request $request): JsonResponse
     {
-        $commande = $this->repository->findOneBy(['id' => $id]);
-        if ($commande) {
+        if (!$this->estStaff()) {
+            return new JsonResponse(['message' => "Seul un employé ou un administrateur peut modifier le statut d'une commande."], Response::HTTP_FORBIDDEN);
+        }
+
+        $commande = $this->repository->find($id);
+        if (!$commande) {
+            return new JsonResponse(['message' => 'Commande introuvable.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = $this->lireJson($request);
+        $statut = (string) ($data['statut'] ?? '');
+
+        if ($statut === Commande::STATUT_ANNULEE) {
+            return new JsonResponse(['message' => "Pour annuler une commande, utilisez l'action « Annuler » (motif et mode de contact obligatoires)."], Response::HTTP_BAD_REQUEST);
+        }
+        if (!in_array($statut, Commande::STATUTS, true)) {
+            return new JsonResponse(['message' => 'Statut invalide. Valeurs possibles : ' . implode(', ', Commande::STATUTS)], Response::HTTP_BAD_REQUEST);
+        }
+        if (in_array($commande->getStatut(), Commande::STATUTS_FINAUX, true)) {
+            return new JsonResponse(['message' => 'Cette commande est ' . mb_strtolower($commande->getStatut()) . ' : son statut ne peut plus changer.'], Response::HTTP_CONFLICT);
+        }
+
+        if (array_key_exists('pretMateriel', $data)) {
+            $commande->setPretMateriel((bool) $data['pretMateriel']);
+        }
+
+        if ($statut === Commande::STATUT_ATTENTE_MATERIEL && !$commande->isPretMateriel()) {
+            return new JsonResponse(['message' => "Aucun matériel n'a été prêté pour cette commande : cochez « Prêt de matériel » d'abord."], Response::HTTP_BAD_REQUEST);
+        }
+        if ($statut === Commande::STATUT_TERMINEE && $commande->isPretMateriel()) {
+            // Terminée avec prêt de matériel = le matériel a été restitué.
+            $commande->setRestitutionMateriel(true);
+        }
+
+        if ($statut === $commande->getStatut()) {
+            $this->manager->flush();
+
             return new JsonResponse($this->commandeToArray($commande), Response::HTTP_OK);
         }
 
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
-    }
+        $commentaire = trim((string) ($data['commentaire'] ?? '')) ?: null;
+        $commande->changerStatut($statut, $commentaire, $this->getUser());
+        $this->manager->flush();
+        $this->statsMongo->synchroniser($commande);
 
-    #[Route('/{id}', name: 'delete', methods: 'DELETE', requirements: ['id' => '\d+'])]
-    /** @OA\Delete(
-     *     path="/api/commande/{id}",
-     *     summary="Supprimer une commande par ID",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=204, description="Commande supprimée avec succès"),
-     *     @OA\Response(response=404, description="Commande non trouvée")
-     * )
-     */
-    public function delete(int $id): JsonResponse
-    {
-        $commande = $this->repository->findOneBy(['id' => $id]);
-        if ($commande) {
-            $this->manager->remove($commande);
-            $this->manager->flush();
-
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        $mailEnvoye = null;
+        if ($statut === Commande::STATUT_ATTENTE_MATERIEL) {
+            $mailEnvoye = $this->mailerService->envoyerRappelRetourMateriel($commande);
+        } elseif ($statut === Commande::STATUT_TERMINEE) {
+            $mailEnvoye = $this->mailerService->envoyerInvitationAvis($commande);
         }
 
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        return new JsonResponse($this->commandeToArray($commande) + ['mailEnvoye' => $mailEnvoye], Response::HTTP_OK);
+    }
+
+    #[Route('/{id}/annuler', name: 'annuler', methods: 'POST', requirements: ['id' => '\d+'])]
+    /** @OA\Post(
+     *     path="/api/commande/{id}/annuler",
+     *     summary="Annuler une commande",
+     *     description="Client : possible tant que la commande est 'En attente'. Employé : après avoir contacté le client, modeContact (GSM/Email) et motif obligatoires. La commande est conservée avec le statut 'Annulée' et le stock du menu est rendu.",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="modeContact", type="string", enum={"GSM", "Email"}),
+     *             @OA\Property(property="motif", type="string", example="Le client a changé de date")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Commande annulée"),
+     *     @OA\Response(response=400, description="Motif / mode de contact manquant"),
+     *     @OA\Response(response=409, description="Commande déjà acceptée (client), terminée ou annulée")
+     * )
+     */
+    public function annuler(int $id, Request $request): JsonResponse
+    {
+        $commande = $this->trouverCommandeAutorisee($id);
+        if ($commande instanceof JsonResponse) {
+            return $commande;
+        }
+
+        $data = $this->lireJson($request);
+        /** @var User $user */
+        $user = $this->getUser();
+
+        if (in_array($commande->getStatut(), Commande::STATUTS_FINAUX, true)) {
+            return new JsonResponse(['message' => 'Cette commande est déjà ' . mb_strtolower($commande->getStatut()) . '.'], Response::HTTP_CONFLICT);
+        }
+
+        if ($this->estStaff()) {
+            $erreurContact = $this->verifierContactClient($data);
+            if ($erreurContact) {
+                return $erreurContact;
+            }
+            $motif = trim((string) $data['motif']);
+            $commande->setModeContact($data['modeContact']);
+            $commande->setMotifAnnulation($motif);
+            $commentaire = sprintf('Annulée par un employé après contact du client par %s : %s', $data['modeContact'], $motif);
+        } else {
+            if ($commande->getStatut() !== Commande::STATUT_EN_ATTENTE) {
+                return new JsonResponse(
+                    ['message' => 'Votre commande a déjà été acceptée : contactez-nous pour l\'annuler.'],
+                    Response::HTTP_CONFLICT
+                );
+            }
+            $motif = trim((string) ($data['motif'] ?? '')) ?: null;
+            $commande->setMotifAnnulation($motif);
+            $commentaire = 'Annulée par le client' . ($motif ? ' : ' . $motif : '');
+        }
+
+        $commande->changerStatut(Commande::STATUT_ANNULEE, $commentaire, $user);
+
+        // La commande annulée libère une place dans le stock du menu.
+        $menu = $commande->getMenu();
+        if ($menu && $menu->getQuantiteRestante() !== null) {
+            $menu->setQuantiteRestante($menu->getQuantiteRestante() + 1);
+        }
+
+        $this->manager->flush();
+        $this->statsMongo->synchroniser($commande);
+        $this->mailerService->envoyerAnnulationCommande($commande);
+
+        return new JsonResponse($this->commandeToArray($commande), Response::HTTP_OK);
+    }
+
+    #[Route('/{id}', name: 'show', methods: 'GET', requirements: ['id' => '\d+'])]
+    /** @OA\Get(path="/api/commande/{id}", summary="Détail d'une commande avec son suivi (client propriétaire ou employé)", @OA\Response(response=200, description="Commande")) */
+    public function show(int $id): JsonResponse
+    {
+        $commande = $this->trouverCommandeAutorisee($id);
+        if ($commande instanceof JsonResponse) {
+            return $commande;
+        }
+
+        return new JsonResponse($this->commandeToArray($commande), Response::HTTP_OK);
+    }
+
+    /** Vérifie que l'employé indique comment il a joint le client, et pourquoi. */
+    private function verifierContactClient(array $data): ?JsonResponse
+    {
+        $mode = $data['modeContact'] ?? null;
+        $motif = trim((string) ($data['motif'] ?? ''));
+
+        if (!in_array($mode, Commande::MODES_CONTACT, true) || $motif === '') {
+            return new JsonResponse(
+                ['message' => 'Vous devez contacter le client avant de modifier ou annuler sa commande : indiquez le mode de contact (GSM ou Email) et le motif.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+        if (mb_strlen($motif) > 200) {
+            return new JsonResponse(['message' => 'Le motif ne peut pas dépasser 200 caractères.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return null;
     }
 }

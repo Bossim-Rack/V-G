@@ -3,15 +3,16 @@
 namespace App\Controller;
 
 use App\Entity\Avis;
+use App\Entity\Commande;
+use App\Entity\User;
 use App\Repository\AvisRepository;
+use App\Repository\CommandeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request, Response};
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/avis', name: 'app_api_avis_')]
 class AvisController extends AbstractController
@@ -19,38 +20,44 @@ class AvisController extends AbstractController
     public function __construct(
         private EntityManagerInterface $manager,
         private AvisRepository $repository,
-        private SerializerInterface $serializer,
-        private UrlGeneratorInterface $urlGenerator,
+        private CommandeRepository $commandeRepository,
+        private ValidatorInterface $validator,
     ) {
     }
 
+    private function estStaff(): bool
+    {
+        return $this->isGranted('ROLE_EMPLOYE');
+    }
+
+    /** transforme l'avis en tableau, on renvoie juste le nom de l'auteur (pas de mdp ni token) */
+    private function avisToArray(Avis $avis): array
+    {
+        $commande = $avis->getCommande();
+
+        return [
+            'id' => $avis->getId(),
+            'note' => $avis->getNote(),
+            'description' => $avis->getDescription(),
+            'statut' => $avis->getStatut(),
+            'user' => $avis->getUser() ? [
+                'id' => $avis->getUser()->getId(),
+                'firstName' => $avis->getUser()->getFirstName(),
+                'lastName' => $avis->getUser()->getLastName(),
+            ] : null,
+            'commande' => $commande ? [
+                'id' => $commande->getId(),
+                'menu' => $commande->getMenu()?->getTitleMenu(),
+                'datePrestation' => $commande->getDatePrestation()?->format('Y-m-d'),
+            ] : null,
+        ];
+    }
+
     #[Route(name: 'index', methods: 'GET')]
-    /** @OA\Get(
-     *     path="/api/avis",
-     *     summary="Lister tous les avis (modération, réservé admin/employé)",
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste de tous les avis",
-     *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(
-     *                 type="object",
-     *                 @OA\Property(property="id", type="integer", example=1),
-     *                 @OA\Property(property="note", type="integer", example=4),
-     *                 @OA\Property(property="description", type="string", example="Super prestation !"),
-     *                 @OA\Property(property="statut", type="string", enum={"En attente", "Publié", "Refusé"}, example="En attente")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=403,
-     *         description="Accès refusé : réservé aux employés/administrateurs"
-     *     )
-     * )
-     */
+    /** @OA\Get(path="/api/avis", summary="Tous les avis, à modérer en premier (employé/admin)", @OA\Response(response=200, description="Avis")) */
     public function index(): JsonResponse
     {
-        if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_EMPLOYE')) {
+        if (!$this->estStaff()) {
             return new JsonResponse(
                 ['message' => 'Seul un employé ou un administrateur peut consulter tous les avis.'],
                 Response::HTTP_FORBIDDEN
@@ -59,37 +66,17 @@ class AvisController extends AbstractController
 
         // Les avis en attente de modération sont remontés en premier.
         $avis = $this->repository->findBy([], ['statut' => 'ASC', 'id' => 'DESC']);
-        $responseData = $this->serializer->serialize($avis, 'json');
 
-        return new JsonResponse($responseData, Response::HTTP_OK, [], true);
+        return new JsonResponse(array_map(fn (Avis $a) => $this->avisToArray($a), $avis), Response::HTTP_OK);
     }
 
     #[Route('/publies', name: 'publiees', methods: 'GET')]
-    /** @OA\Get(
-     *     path="/api/avis/publies",
-     *     summary="Lister les avis publiés (public, pour la page d'accueil)",
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste des avis validés",
-     *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(
-     *                 type="object",
-     *                 @OA\Property(property="id", type="integer", example=1),
-     *                 @OA\Property(property="note", type="integer", example=5),
-     *                 @OA\Property(property="description", type="string", example="Super prestation !"),
-     *                 @OA\Property(property="prenom", type="string", example="Camille")
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    /** @OA\Get(path="/api/avis/publies", summary="Avis validés, affichés sur la page d'accueil (public)", @OA\Response(response=200, description="Avis publiés")) */
     public function publiees(): JsonResponse
     {
         $avis = $this->repository->findBy(['statut' => Avis::STATUT_PUBLIE], ['id' => 'DESC']);
 
-        // Route publique : on ne renvoie surtout pas l'entité User complète
-        // (mot de passe hashé, apiToken...), juste le prénom de l'auteur.
+        // Route publique : juste le prénom de l'auteur.
         $data = array_map(static fn (Avis $a) => [
             'id' => $a->getId(),
             'note' => $a->getNote(),
@@ -103,218 +90,139 @@ class AvisController extends AbstractController
     #[Route(methods: 'POST')]
     /** @OA\Post(
      *     path="/api/avis",
-     *     summary="Créer un Avis",
+     *     summary="Donner son avis sur une de ses commandes terminées (note de 1 à 5 + commentaire)",
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Données de l'avis à créer",
      *         @OA\JsonContent(
      *             type="object",
-     *             @OA\Property(property="note", type="integer", example=4),
-     *             @OA\Property(property="description", type="string", example="Un excellent repas, service impeccable.")
+     *             @OA\Property(property="commandeId", type="integer", example=12),
+     *             @OA\Property(property="note", type="integer", example=5),
+     *             @OA\Property(property="description", type="string", example="Un repas parfait !")
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Succès création",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="id", type="integer", example=1),
-     *             @OA\Property(property="note", type="integer", example=4),
-     *             @OA\Property(property="description", type="string", example="Un excellent repas, service impeccable."),
-     *             @OA\Property(property="statut", type="string", enum={"En attente", "Publié", "Refusé"}, example="En attente")
-     *         )
-     *     )
+     *     @OA\Response(response=201, description="Avis enregistré, en attente de validation"),
+     *     @OA\Response(response=400, description="Données invalides"),
+     *     @OA\Response(response=409, description="Commande non terminée ou avis déjà donné")
      * )
      */
     public function new(Request $request): JsonResponse
     {
-        $avis = $this->serializer->deserialize($request->getContent(), Avis::class, 'json');
+        $data = json_decode($request->getContent(), true);
+        $data = is_array($data) ? $data : [];
+        /** @var User $user */
+        $user = $this->getUser();
 
-        // Le statut (avis validé ou non) et l'auteur ne doivent jamais dépendre
-        // de ce que le client envoie : un avis est toujours "En attente" à la
-        // création, et l'auteur est l'utilisateur authentifié via son token,
-        // jamais un user_id fourni dans la requête.
-        $avis->setStatut(Avis::STATUT_ATTENTE);
-        $avis->setUser($this->getUser());
+        $commande = !empty($data['commandeId']) ? $this->commandeRepository->find((int) $data['commandeId']) : null;
+        if (!$commande || $commande->getUser() !== $user) {
+            return new JsonResponse(['message' => 'Choisissez une de vos commandes pour donner votre avis.'], Response::HTTP_BAD_REQUEST);
+        }
+        if ($commande->getStatut() !== Commande::STATUT_TERMINEE) {
+            return new JsonResponse(['message' => 'Vous pourrez donner votre avis une fois la commande terminée.'], Response::HTTP_CONFLICT);
+        }
+        if ($this->repository->findOneBy(['commande' => $commande])) {
+            return new JsonResponse(['message' => 'Vous avez déjà donné votre avis sur cette commande.'], Response::HTTP_CONFLICT);
+        }
+
+        $note = filter_var($data['note'] ?? null, FILTER_VALIDATE_INT);
+        $description = trim((string) ($data['description'] ?? ''));
+        if ($note === false || $note < 1 || $note > 5) {
+            return new JsonResponse(['message' => 'La note doit être comprise entre 1 et 5.'], Response::HTTP_BAD_REQUEST);
+        }
+        if ($description === '' || mb_strlen($description) > 255) {
+            return new JsonResponse(['message' => 'Le commentaire est obligatoire (255 caractères maximum).'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Statut et auteur ne dépendent jamais de ce que le client envoie.
+        $avis = (new Avis())
+            ->setNote($note)
+            ->setDescription($description)
+            ->setStatut(Avis::STATUT_ATTENTE)
+            ->setUser($user)
+            ->setCommande($commande);
+
+        if (count($erreurs = $this->validator->validate($avis)) > 0) {
+            return new JsonResponse(['message' => $erreurs[0]->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
 
         $this->manager->persist($avis);
         $this->manager->flush();
 
-        $responseData = $this->serializer->serialize($avis, 'json');
-        $location = $this->urlGenerator->generate(
-            'app_api_avis_show',
-            ['id' => $avis->getId()],
-            UrlGeneratorInterface::ABSOLUTE_URL,
-        );
-
-        return new JsonResponse($responseData, Response::HTTP_CREATED, ["Location" => $location], true);
+        return new JsonResponse($this->avisToArray($avis), Response::HTTP_CREATED);
     }
 
     #[Route('/me', name: 'mine', methods: 'GET')]
-    /** @OA\Get(
-     *     path="/api/avis/me",
-     *     summary="Lister mes avis (utilisateur connecté)",
-     *     @OA\Response(
-     *         response=200,
-     *         description="Liste de mes avis",
-     *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(
-     *                 type="object",
-     *                 @OA\Property(property="id", type="integer", example=1),
-     *                 @OA\Property(property="note", type="integer", example=5),
-     *                 @OA\Property(property="description", type="string", example="Un excellent repas, service impeccable."),
-     *                 @OA\Property(property="statut", type="string", enum={"En attente", "Publié", "Refusé"}, example="En attente")
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    /** @OA\Get(path="/api/avis/me", summary="Mes avis", @OA\Response(response=200, description="Mes avis")) */
     public function mine(): JsonResponse
     {
         $avis = $this->repository->findBy(['user' => $this->getUser()], ['id' => 'DESC']);
-        $responseData = $this->serializer->serialize($avis, 'json');
 
-        return new JsonResponse($responseData, Response::HTTP_OK, [], true);
+        return new JsonResponse(array_map(fn (Avis $a) => $this->avisToArray($a), $avis), Response::HTTP_OK);
     }
 
     #[Route('/{id}', name: 'show', methods: 'GET', requirements: ['id' => '\d+'])]
-        /** @OA\Get(
-     *     path="/api/avis/{id}",
-     *     summary="Afficher un Avis par ID",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'avis a afficher",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Rôle trouvé avec succès",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="id", type="integer", example=1),
-     *             @OA\Property(property="note", type="integer", example=5),
-     *             @OA\Property(property="description", type="string", example= "donnez votre avis"),
-     *             @OA\Property(property="statut", type="string", enum={"En attente", "Publié", "Refusé"}, example="En attente")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Avis non trouvé"
-     *     )
-     * )
-     */
+    /** @OA\Get(path="/api/avis/{id}", summary="Détail d'un avis (auteur ou employé)", @OA\Response(response=200, description="Avis")) */
     public function show(int $id): JsonResponse
     {
-        $avis = $this->repository->findOneBy(['id' => $id]);
-        if ($avis) {
-            $responseData = $this->serializer->serialize($avis, 'json');
-            return new JsonResponse($responseData, Response::HTTP_OK, [], true);
+        $avis = $this->repository->find($id);
+        if (!$avis || (!$this->estStaff() && $avis->getUser() !== $this->getUser())) {
+            return new JsonResponse(null, Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        return new JsonResponse($this->avisToArray($avis), Response::HTTP_OK);
     }
 
     #[Route('/{id}', name: 'edit', methods: 'PUT', requirements: ['id' => '\d+'])]
-        /** @OA\Put(
+    /** @OA\Put(
      *     path="/api/avis/{id}",
-     *     summary="Modifier un avis par ID",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'avis à modifier",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Nouvelles données de l'id à mettre à jour",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="note", type="integer", example="1"),
-     *             @OA\Property(property="description", type="string", example="Donnez votre avis"),
-     *             @OA\Property(property="statut", type="string", enum={"En attente", "Publié", "Refusé"}, example="Publié")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=204,
-     *         description="Rôle modifié avec succès"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Rôle non trouvé"
-     *     )
+     *     summary="Valider (Publié) ou refuser (Refusé) un avis (employé/admin)",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(type="object", @OA\Property(property="statut", type="string", enum={"En attente", "Publié", "Refusé"}))),
+     *     @OA\Response(response=204, description="Statut modifié"),
+     *     @OA\Response(response=400, description="Statut invalide"),
+     *     @OA\Response(response=403, description="Réservé aux employés/administrateurs")
      * )
      */
     public function edit(int $id, Request $request): JsonResponse
     {
-        $avis = $this->repository->findOneBy(['id' => $id]);
-        if ($avis) {
-            $data = json_decode($request->getContent(), true) ?? [];
-
-            if (array_key_exists('statut', $data)) {
-                // Seuls les admins et employés peuvent valider/refuser un avis.
-                if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_EMPLOYE')) {
-                    return new JsonResponse(
-                        ['message' => "Seul un employé ou un administrateur peut modifier le statut d'un avis."],
-                        Response::HTTP_FORBIDDEN
-                    );
-                }
-
-                if (!in_array($data['statut'], Avis::STATUTS, true)) {
-                    return new JsonResponse(
-                        ['message' => 'Statut invalide. Valeurs acceptées : ' . implode(', ', Avis::STATUTS)],
-                        Response::HTTP_BAD_REQUEST
-                    );
-                }
-            }
-
-            $avis = $this->serializer->deserialize(
-                $request->getContent(),
-                Avis::class,
-                'json',
-                [AbstractNormalizer::OBJECT_TO_POPULATE => $avis]
+        if (!$this->estStaff()) {
+            return new JsonResponse(
+                ['message' => "Seul un employé ou un administrateur peut modifier le statut d'un avis."],
+                Response::HTTP_FORBIDDEN
             );
-
-            $this->manager->flush();
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
         }
 
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        $avis = $this->repository->find($id);
+        if (!$avis) {
+            return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $statut = is_array($data) ? ($data['statut'] ?? null) : null;
+        if (!in_array($statut, Avis::STATUTS, true)) {
+            return new JsonResponse(
+                ['message' => 'Statut invalide. Valeurs acceptées : ' . implode(', ', Avis::STATUTS)],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $avis->setStatut($statut);
+        $this->manager->flush();
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
     #[Route('/{id}', name: 'delete', methods: 'DELETE', requirements: ['id' => '\d+'])]
-    /** @OA\Delete(
-     *     path="/api/avis/{id}",
-     *     summary="Supprimer un avis par ID",
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID de l'avis à supprimer",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=204,
-     *         description="Avis supprimé avec succès"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Avis non trouvé"
-     *     )
-     * )
-     */
+    /** @OA\Delete(path="/api/avis/{id}", summary="Supprimer un avis (son auteur ou un employé)", @OA\Response(response=204, description="Avis supprimé")) */
     public function delete(int $id): JsonResponse
     {
-        $avis = $this->repository->findOneBy(['id' => $id]);
-        if ($avis) {
-            $this->manager->remove($avis);
-            $this->manager->flush();
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        $avis = $this->repository->find($id);
+        if (!$avis || (!$this->estStaff() && $avis->getUser() !== $this->getUser())) {
+            return new JsonResponse(null, Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse(null, Response::HTTP_NOT_FOUND);
+        $this->manager->remove($avis);
+        $this->manager->flush();
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }

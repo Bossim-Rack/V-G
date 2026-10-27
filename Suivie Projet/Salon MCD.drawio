@@ -1,0 +1,138 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="alEYh5xC1dMg1ko-0nML">
+    <mxGraphModel dx="2161" dy="2215" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="OAwGP2RD037CrrbI7v2J-23" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-24" connectable="0" parent="OAwGP2RD037CrrbI7v2J-23" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.2278" y="8" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-31" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-32" connectable="0" parent="OAwGP2RD037CrrbI7v2J-31" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.1264" y="-3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="SALARIÉ :&lt;div&gt;&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID salarié (PK)&lt;/li&gt;&lt;li&gt;Nom (var 50)&lt;/li&gt;&lt;li&gt;Prénom (var 50)&lt;/li&gt;&lt;li&gt;ID rôle salarié (PK étrangère)&lt;/li&gt;&lt;li&gt;Code PIN ( int 4 )&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="680" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-25" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="OAwGP2RD037CrrbI7v2J-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-26" connectable="0" parent="OAwGP2RD037CrrbI7v2J-25" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.1444" y="-4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="RÔLE SALARIÉ :&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID rôle salarié (PK)&lt;/li&gt;&lt;li&gt;Intitulé (var 50)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="360" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-21" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-22" connectable="0" parent="OAwGP2RD037CrrbI7v2J-21" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.0333" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-27" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-28" connectable="0" parent="OAwGP2RD037CrrbI7v2J-27" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.1029" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="COMPETENCE :&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID competence (PK)&lt;/li&gt;&lt;li&gt;Intitulé (var 50)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="360" y="-40" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-36" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-37" connectable="0" parent="OAwGP2RD037CrrbI7v2J-36" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.3083" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="RÔLE :&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID rôle (PK)&lt;/li&gt;&lt;li&gt;Intitulé (var 20)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="360" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="PRESTATION :&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID prestation (PK)&lt;/li&gt;&lt;li&gt;Intitulé ( var 50 )&lt;/li&gt;&lt;li&gt;Prix ( Decimal)&lt;/li&gt;&lt;li&gt;Durée ( time )&lt;/li&gt;&lt;li&gt;ID competence ( PK etrangere)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="360" y="-280" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="EVENEMENT :&lt;div&gt;&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID evenement ( PK)&lt;/li&gt;&lt;ul&gt;&lt;li&gt;DATE ( date )&lt;/li&gt;&lt;li&gt;ID client (PK étrangère)&lt;/li&gt;&lt;li&gt;ID CS (PK étrangère)&amp;nbsp;&lt;/li&gt;&lt;li&gt;ID prestation (PK étrangère)&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="1000.5" y="-40" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-15" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-18" connectable="0" parent="OAwGP2RD037CrrbI7v2J-15" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.1056" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Compte utilisateur :&lt;div&gt;&lt;div&gt;&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID utilisateur (PK)&lt;/li&gt;&lt;li&gt;Nom (50)&lt;/li&gt;&lt;li&gt;Prenom (var 50)&lt;/li&gt;&lt;li&gt;Email (var 50)&lt;/li&gt;&lt;li&gt;Mot de passe (var 50)&lt;/li&gt;&lt;li&gt;N°telephone (var 10)&lt;/li&gt;&lt;li&gt;Rôle (PK etrangere)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="360" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-29" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="40" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-30" connectable="0" parent="OAwGP2RD037CrrbI7v2J-29" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.0147" y="-2" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="COMPETENCE-SALARIÉ :&lt;div&gt;&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID CS (PK)&lt;/li&gt;&lt;li&gt;ID salarié (PK etrangere)&lt;/li&gt;&lt;li&gt;ID compétence (PK etrangere)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="680" y="-40" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="AVIS-CLIENT :&lt;div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;AVIS :&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;ul&gt;&lt;li&gt;Primary key (PK)&lt;/li&gt;&lt;li&gt;Note 1-5 (int)&lt;/li&gt;&lt;li&gt;Commentaire (var 50)&lt;/li&gt;&lt;li&gt;Statut (var 10)&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID compte utilisateur ( PK etrangere)&lt;/li&gt;&lt;li&gt;ID evenement ( Pk étrangère )&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="40" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-34" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.998;entryY=0.438;entryDx=0;entryDy=0;entryPerimeter=0;" target="OAwGP2RD037CrrbI7v2J-6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1360" y="520" />
+              <mxPoint x="1360" y="40" />
+              <mxPoint x="1240" y="40" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-35" connectable="0" parent="OAwGP2RD037CrrbI7v2J-34" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="0.681" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-38" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="HORAIRE :&lt;div&gt;&lt;ul&gt;&lt;li&gt;ID Horaire (PK)&amp;nbsp;&lt;/li&gt;&lt;li&gt;Jour ( date )&lt;/li&gt;&lt;li&gt;Heure-ouverture ( time )&lt;/li&gt;&lt;li&gt;Heure-fermeture ( time )&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="320" x="680" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-39" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&lt;div&gt;&lt;font style=&quot;font-size: 21px;&quot;&gt;Journal (Collection MongoDB) :&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;{&lt;/div&gt;&lt;div&gt;&amp;nbsp; _id,&lt;/div&gt;&lt;div&gt;&amp;nbsp; type_evenement,&lt;/div&gt;&lt;div&gt;&amp;nbsp; date,&lt;/div&gt;&lt;div&gt;&amp;nbsp; id_salarie,&lt;/div&gt;&lt;div&gt;&amp;nbsp; details: { ... variable selon type_evenement }&lt;/div&gt;&lt;div&gt;}&lt;/div&gt;" vertex="1">
+          <mxGeometry height="310" width="240" x="1120" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-40" edge="1" parent="1" source="OAwGP2RD037CrrbI7v2J-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="OAwGP2RD037CrrbI7v2J-11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120.5" y="-360" />
+              <mxPoint x="0.14" y="-360" />
+              <mxPoint x="0.14" y="680" />
+              <mxPoint x="160" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OAwGP2RD037CrrbI7v2J-41" connectable="0" parent="OAwGP2RD037CrrbI7v2J-40" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1,n" vertex="1">
+          <mxGeometry relative="1" x="-0.5592" y="4" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

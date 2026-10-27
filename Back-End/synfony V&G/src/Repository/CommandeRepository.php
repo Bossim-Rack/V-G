@@ -21,28 +21,30 @@ class CommandeRepository extends ServiceEntityRepository
         parent::__construct($registry, Commande::class);
     }
 
-//    /**
-//     * @return Commande[] Returns an array of Commande objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('c')
-//            ->andWhere('c.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('c.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
+    /**
+     * Filtre des commandes pour l'espace employé : par statut et/ou par client
+     * (recherche dans le prénom, le nom ou l'email). Les plus récentes d'abord.
+     *
+     * @return Commande[]
+     */
+    public function rechercher(?string $statut, ?string $client): array
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->join('c.user', 'u')
+            ->addSelect('u')
+            ->leftJoin('c.menu', 'm')
+            ->addSelect('m')
+            ->orderBy('c.id', 'DESC');
 
-//    public function findOneBySomeField($value): ?Commande
-//    {
-//        return $this->createQueryBuilder('c')
-//            ->andWhere('c.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+        if ($statut) {
+            $qb->andWhere('c.statut = :statut')->setParameter('statut', $statut);
+        }
+
+        if ($client) {
+            $qb->andWhere("(LOWER(u.firstName) LIKE :client OR LOWER(u.lastName) LIKE :client OR LOWER(u.email) LIKE :client OR LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE :client)")
+                ->setParameter('client', '%' . mb_strtolower($client) . '%');
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

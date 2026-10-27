@@ -594,6 +594,23 @@ body {
 .profil-statut-attente { background-color: var(--Corail); color:#fff; }
 .profil-statut-annulee { background-color:#dc3545; color:#fff; }
 .profil-statut-terminee { background-color: var(--Petrol); color:#fff; }
+.profil-statut-encours { background-color:#0d6efd; color:#fff; }
+.profil-statut-livree { background-color:#198754; color:#fff; }
+.profil-statut-materiel { background-color:#b35c00; color:#fff; }
+
+/* Suivi d'une commande (historique des statuts) */
+.suivi-commande { list-style:none; padding-left:0; margin:0; border-left:3px solid var(--Petrol); }
+.suivi-commande li { position:relative; padding:0 0 .6rem 1rem; font-size:.85rem; }
+.suivi-commande li::before { content:""; position:absolute; left:-7px; top:.3rem; width:11px; height:11px; border-radius:50%; background-color: var(--Petrol); }
+.suivi-commande li:last-child::before { background-color: var(--Corail); }
+.suivi-commande .suivi-date { color:#6c757d; }
+
+/* Conditions d'un menu : toujours bien visibles */
+.menu-conditions, .menu-card-conditions { color:#7a4a00; }
+.menu-card-conditions { font-weight:600; }
+
+/* Statistiques administrateur */
+.stats-chart-wrap { position:relative; height:320px; }
 
 /* Suppression de compte */
 .profil-danger-zone { border:1px dashed #dc3545; border-radius:12px; }

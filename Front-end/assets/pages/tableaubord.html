@@ -22,6 +22,7 @@
             <li><button type="button" class="profil-nav-link" data-target="plats"><i class="bi bi-egg-fried"></i> Plats</button></li>
             <li><button type="button" class="profil-nav-link" data-target="avis"><i class="bi bi-star"></i> Avis</button></li>
             <li><button type="button" class="profil-nav-link" data-target="etablissement"><i class="bi bi-shop"></i> Établissement</button></li>
+            <li id="nav-item-stats" class="d-none"><button type="button" class="profil-nav-link" data-target="stats"><i class="bi bi-bar-chart"></i> Statistiques</button></li>
             <li id="nav-item-utilisateurs" class="d-none"><button type="button" class="profil-nav-link" data-target="utilisateurs"><i class="bi bi-people"></i> Utilisateurs</button></li>
           </ul>
         </div>
@@ -86,16 +87,31 @@
               <h2 class="profil-card-title mb-0">Commandes</h2>
             </div>
             <div class="profil-card-body p-4">
+              <form class="row g-2 align-items-end mb-3" id="commandes-filtres" role="search">
+                <div class="col-12 col-md-5">
+                  <label class="form-label" for="filtre-commande-statut">Statut :</label>
+                  <select id="filtre-commande-statut" class="form-select">
+                    <option value="">Tous les statuts</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-5">
+                  <label class="form-label" for="filtre-commande-client">Client :</label>
+                  <input type="search" id="filtre-commande-client" class="form-control" placeholder="Nom, prénom ou email">
+                </div>
+                <div class="col-12 col-md-2">
+                  <button type="button" class="btn btn-sm dash-table-btn w-100" id="btn-filtres-commandes-reset">Effacer</button>
+                </div>
+              </form>
               <div class="table-responsive">
                 <table class="dash-table">
                   <thead>
                     <tr>
+                      <th>N°</th>
                       <th>Menu</th>
                       <th>Client</th>
-                      <th>Adresse</th>
                       <th>Prestation</th>
                       <th>Personnes</th>
-                      <th>Prix</th>
+                      <th>Total</th>
                       <th>Statut</th>
                       <th></th>
                     </tr>
@@ -112,51 +128,117 @@
 
             <button type="button" class="btn btn-sm dash-table-btn mb-3" id="btn-back-to-commandes"><i class="bi bi-arrow-left"></i> Retour à la liste</button>
 
-            <div class="profil-card">
-              <div class="profil-card-header py-3 px-4">
-                <h2 class="profil-card-title mb-0">Modifier la commande</h2>
+            <div class="profil-card mb-4">
+              <div class="profil-card-header py-3 px-4 d-flex justify-content-between align-items-center">
+                <h2 class="profil-card-title mb-0" id="detail-commande-titre">Commande</h2>
+                <span class="profil-statut" id="detail-commande-statut-badge"></span>
               </div>
               <div class="profil-card-body p-4">
-                <form id="commandeDetailForm">
-                  <div class="row g-3 mb-4">
+                <div class="row g-3 mb-3">
+                  <div class="col-12 col-md-6">
+                    <p class="form-label mb-0">Menu :</p>
+                    <p class="mb-0" id="detail-commande-menu">—</p>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <p class="form-label mb-0">Client :</p>
+                    <p class="mb-0" id="detail-commande-client">—</p>
+                    <p class="mb-0 small" id="detail-commande-contact"></p>
+                  </div>
+                  <div class="col-12">
+                    <p class="form-label mb-0">Adresse de livraison :</p>
+                    <p class="mb-0" id="detail-commande-adresse">—</p>
+                  </div>
+                  <div class="col-6 col-md-4">
+                    <p class="form-label mb-0">Prestation :</p>
+                    <p class="mb-0" id="detail-commande-date">—</p>
+                  </div>
+                  <div class="col-6 col-md-4">
+                    <p class="form-label mb-0">Personnes :</p>
+                    <p class="mb-0" id="detail-commande-personnes">—</p>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <p class="form-label mb-0">Prix :</p>
+                    <p class="mb-0" id="detail-commande-prix">—</p>
+                  </div>
+                  <div class="col-12 d-none" id="detail-commande-annulation-wrap">
+                    <p class="text-danger mb-0" id="detail-commande-annulation"></p>
+                  </div>
+                </div>
+                <h3 class="h6">Suivi</h3>
+                <div id="detail-commande-suivi"></div>
+              </div>
+            </div>
+
+            <div id="detail-commande-actions">
+              <div class="profil-card mb-4">
+                <div class="profil-card-header py-3 px-4">
+                  <h2 class="profil-card-title mb-0">Mettre à jour le statut</h2>
+                </div>
+                <div class="profil-card-body p-4">
+                  <div class="row g-3 align-items-end">
                     <div class="col-12 col-md-6">
-                      <label class="form-label">Menu :</label>
-                      <p class="mb-0" id="detail-commande-menu">—</p>
+                      <label class="form-label" for="detail-commande-statut">Nouveau statut :</label>
+                      <select id="detail-commande-statut" class="form-select"></select>
                     </div>
                     <div class="col-12 col-md-6">
-                      <label class="form-label">Client :</label>
-                      <p class="mb-0" id="detail-commande-client">—</p>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="detail-commande-pret">
+                        <label class="form-check-label" for="detail-commande-pret">Du matériel a été prêté au client</label>
+                      </div>
                     </div>
-                    <div class="col-12">
-                      <label class="form-label">Adresse de livraison :</label>
-                      <p class="mb-0" id="detail-commande-adresse">—</p>
+                  </div>
+                  <p class="small text-muted mt-2 mb-0">« En attente du retour de matériel » envoie au client le rappel des 10 jours ouvrés / 600 €. « Terminée » l'invite à donner son avis.</p>
+                  <p class="text-danger small d-none mt-2 mb-0" id="detail-commande-statut-erreur" role="alert"></p>
+                  <div class="text-end mt-3">
+                    <button type="button" class="btn btn-connexion" id="btn-save-commande">Mettre à jour</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="profil-card mb-4">
+                <div class="profil-card-header py-3 px-4">
+                  <h2 class="profil-card-title mb-0">Modifier ou annuler la commande</h2>
+                </div>
+                <div class="profil-card-body p-4">
+                  <div class="alert alert-warning small">Vous devez d'abord <strong>contacter le client</strong> (par GSM ou par email) avant de modifier ou d'annuler sa commande. Indiquez le mode de contact et le motif.</div>
+                  <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label" for="detail-commande-mode-contact">Client contacté par :</label>
+                      <select id="detail-commande-mode-contact" class="form-select">
+                        <option value="">— Choisir —</option>
+                        <option value="GSM">GSM</option>
+                        <option value="Email">Email</option>
+                      </select>
                     </div>
-                    <div class="col-6 col-md-4">
-                      <label class="form-label">Prestation :</label>
-                      <p class="mb-0" id="detail-commande-date">—</p>
+                    <div class="col-12 col-md-8">
+                      <label class="form-label" for="detail-commande-motif">Motif :</label>
+                      <input type="text" id="detail-commande-motif" class="form-control" maxlength="200" placeholder="Ex : le client souhaite décaler l'heure de livraison">
                     </div>
-                    <div class="col-6 col-md-4">
-                      <label class="form-label">Personnes :</label>
-                      <p class="mb-0" id="detail-commande-personnes">—</p>
+                  </div>
+                  <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                      <label class="form-label" for="detail-commande-edit-date">Date :</label>
+                      <input type="date" id="detail-commande-edit-date" class="form-control">
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <label class="form-label" for="detail-commande-edit-heure">Heure :</label>
+                      <input type="time" id="detail-commande-edit-heure" class="form-control">
                     </div>
                     <div class="col-12 col-md-4">
-                      <label class="form-label">Prix :</label>
-                      <p class="mb-0" id="detail-commande-prix">—</p>
+                      <label class="form-label" for="detail-commande-edit-adresse">Adresse :</label>
+                      <input type="text" id="detail-commande-edit-adresse" class="form-control">
+                    </div>
+                    <div class="col-12 col-md-2">
+                      <label class="form-label" for="detail-commande-edit-personnes">Personnes :</label>
+                      <input type="number" id="detail-commande-edit-personnes" class="form-control" min="1">
                     </div>
                   </div>
-                  <div class="mb-4">
-                    <label class="form-label">Statut :</label>
-                    <select id="detail-commande-statut" class="form-select">
-                      <option value="En attente">En attente</option>
-                      <option value="Confirmée">Confirmée</option>
-                      <option value="Terminée">Terminée</option>
-                      <option value="Annulée">Annulée</option>
-                    </select>
+                  <p class="text-danger small d-none" id="detail-commande-modif-erreur" role="alert"></p>
+                  <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <button type="button" class="btn btn-outline-danger" id="btn-annuler-commande">Annuler la commande</button>
+                    <button type="button" class="btn btn-connexion" id="btn-modifier-commande">Enregistrer les modifications</button>
                   </div>
-                  <div class="d-flex justify-content-end">
-                    <button type="button" class="btn btn-connexion" id="btn-save-commande">Enregistrer les changements</button>
-                  </div>
-                </form>
+                </div>
               </div>
             </div>
           </div>
@@ -238,9 +320,14 @@
                       <p class="profil-empty-hint mb-0">Chargement des régimes…</p>
                     </div>
                   </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="detail-menu-description">Description :</label>
+                    <textarea id="detail-menu-description" class="form-control" rows="4" maxlength="100"></textarea>
+                  </div>
                   <div class="mb-4">
-                    <label class="form-label">Description :</label>
-                    <textarea id="detail-menu-description" class="form-control" rows="4"></textarea>
+                    <label class="form-label" for="detail-menu-conditions">Conditions du menu :</label>
+                    <textarea id="detail-menu-conditions" class="form-control" rows="3" placeholder="Ex : à commander au moins 7 jours avant la prestation. À conserver au réfrigérateur."></textarea>
+                    <small class="text-muted">Affichées bien en évidence aux clients avant la commande et rappelées dans le mail de confirmation.</small>
                   </div>
                   <div class="mb-3 text-danger d-none" id="menu-detail-error"></div>
                   <div class="d-flex justify-content-between">
@@ -419,6 +506,69 @@
           </div>
         </div>
 
+        <div class="profil-panel d-none" id="panel-stats">
+          <div class="profil-card mb-4">
+            <div class="profil-card-header py-3 px-4">
+              <h2 class="profil-card-title mb-0">Statistiques des commandes</h2>
+            </div>
+            <div class="profil-card-body p-4">
+              <p class="small text-muted">Données issues de la base NoSQL (MongoDB). Les commandes annulées ne sont pas comptées.</p>
+              <form class="row g-2 align-items-end mb-3" id="stats-filtres">
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="stats-menu">Menu :</label>
+                  <select id="stats-menu" class="form-select"><option value="">Tous les menus</option></select>
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label" for="stats-debut">Du :</label>
+                  <input type="date" id="stats-debut" class="form-control">
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label" for="stats-fin">Au :</label>
+                  <input type="date" id="stats-fin" class="form-control">
+                </div>
+                <div class="col-12 col-md-2">
+                  <button type="button" class="btn btn-connexion w-100" id="btn-stats-appliquer">Appliquer</button>
+                </div>
+              </form>
+              <p class="text-danger d-none" id="stats-erreur" role="alert"></p>
+
+              <div class="row g-3 mb-4">
+                <div class="col-6">
+                  <div class="dash-stat-card">
+                    <span class="dash-stat-icon"><i class="bi bi-currency-euro"></i></span>
+                    <div>
+                      <p class="dash-stat-value mb-0" id="stats-ca-total">—</p>
+                      <p class="dash-stat-label mb-0">Chiffre d'affaires</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="dash-stat-card">
+                    <span class="dash-stat-icon"><i class="bi bi-bag"></i></span>
+                    <div>
+                      <p class="dash-stat-value mb-0" id="stats-nb-commandes">—</p>
+                      <p class="dash-stat-label mb-0">Commandes</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 class="h6">Nombre de commandes par menu</h3>
+              <div class="stats-chart-wrap mb-4">
+                <canvas id="stats-chart" role="img" aria-label="Graphique du nombre de commandes par menu"></canvas>
+              </div>
+
+              <h3 class="h6">Chiffre d'affaires par menu</h3>
+              <div class="table-responsive">
+                <table class="dash-table">
+                  <thead><tr><th>Menu</th><th>Commandes</th><th>Chiffre d'affaires</th></tr></thead>
+                  <tbody id="stats-ca-tbody"><tr><td colspan="3" class="profil-empty-hint">—</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="profil-panel d-none" id="panel-utilisateurs">
 
           <div id="users-list-view">
@@ -464,9 +614,9 @@
               <div class="profil-card-body p-4">
                 <div class="table-responsive">
                   <table class="dash-table">
-                    <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th></th></tr></thead>
+                    <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
                     <tbody id="users-tbody">
-                      <tr><td colspan="4" class="profil-empty-hint">Chargement des comptes…</td></tr>
+                      <tr><td colspan="5" class="profil-empty-hint">Chargement des comptes…</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -520,13 +670,24 @@
                     <select id="detail-Role" class="form-select" disabled style="max-width:260px">
                       <option>Client</option>
                       <option>Employé</option>
-                      <option>Admin</option>
+                      <!-- Pas de création d'administrateur depuis l'application : option affichée uniquement pour le compte admin existant. Évite les conflits ou autre erreur. -->
+                      <option disabled>Admin</option>
                     </select>
                   </div>
                   <div class="text-end">
                     <button type="button" id="btn-toggle-user-detail" class="btn btn-connexion" data-mode="view">Modifier</button>
                   </div>
                 </form>
+              </div>
+            </div>
+
+            <div class="profil-card mb-4" id="user-activation-zone">
+              <div class="profil-card-body p-4 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                <div>
+                  <h3 class="h6 mb-1">Accès au compte : <span id="detail-user-statut"></span></h3>
+                  <p class="mb-0 small text-muted">Un compte désactivé (ex : départ d'un employé) ne peut plus se connecter. Ses données sont conservées.</p>
+                </div>
+                <button type="button" id="btn-toggle-user-actif" class="btn btn-outline-secondary btn-sm">Désactiver le compte</button>
               </div>
             </div>
 

@@ -26,12 +26,13 @@ function creerCarteMenuPublic(menu) {
 
   col.innerHTML =
     '<div class="menu-card">' +
-      '<img src="' + (menu.photoMenu || MENUS_IMAGE_PLACEHOLDER) + '" alt="' + menu.titleMenu + '" class="menu-card-img">' +
+      '<img src="' + (menu.photoMenu || MENUS_IMAGE_PLACEHOLDER) + '" alt="' + echapperHtml(menu.titleMenu) + '" class="menu-card-img">' +
       '<div class="menu-card-body">' +
-        '<h3 class="menu-card-title">' + menu.titleMenu.toUpperCase() + '</h3>' +
-        '<p class="menu-card-text">' + (menu.description || '') + '</p>' +
+        '<h3 class="menu-card-title">' + echapperHtml(menu.titleMenu.toUpperCase()) + '</h3>' +
+        '<p class="menu-card-text">' + echapperHtml(menu.description || '') + '</p>' +
+        (menu.conditions ? '<p class="menu-card-conditions small mb-1"><i class="bi bi-exclamation-triangle-fill"></i> Conditions particulières : voir le détail</p>' : '') +
         ((menu.regimesAlimentaires && menu.regimesAlimentaires.length > 0)
-          ? '<p class="menu-card-regimes mb-0"><i class="bi bi-leaf"></i> ' + menu.regimesAlimentaires.map(function (r) { return r.libelle; }).join(', ') + '</p>'
+          ? '<p class="menu-card-regimes mb-0"><i class="bi bi-leaf"></i> ' + echapperHtml(menu.regimesAlimentaires.map(function (r) { return r.libelle; }).join(', ')) + '</p>'
           : '') +
       '</div>' +
       '<div class="menu-card-footer d-flex justify-content-between align-items-center">' +
@@ -58,6 +59,7 @@ function afficherMenusPublics() {
   var themeId = document.getElementById('filtre-theme').value;
   var allergeneId = document.getElementById('filtre-allergene').value;
   var regimeAlimentaireId = document.getElementById('filtre-regime-alimentaire').value;
+  var nbPersonnes = parseInt(document.getElementById('filtre-personnes').value, 10);
   var prixMin = parseFloat(document.getElementById('filtre-prix-min').value);
   var prixMax = parseFloat(document.getElementById('filtre-prix-max').value);
 
@@ -75,6 +77,12 @@ function afficherMenusPublics() {
     // Régime alimentaire sélectionné manuellement (Végétarien, Sans gluten, ...) —
     // voir Menu::regimesAlimentaires.
     if (regimeAlimentaireId && !(menu.regimesAlimentaires || []).some(function (r) { return String(r.id) === String(regimeAlimentaireId); })) {
+      return false;
+    }
+
+    // Nombre de personnes : on garde les menus commandables pour ce nombre
+    // (leur minimum de personnes est inférieur ou égal au nombre saisi).
+    if (!isNaN(nbPersonnes) && nbPersonnes > 0 && menu.nombrePersonneMinimum > nbPersonnes) {
       return false;
     }
 
@@ -203,10 +211,10 @@ async function chargerMenusPublics() {
   var grille = document.getElementById('menus-grille');
   try {
     const [menusReponse, themesReponse, allergenesReponse, regimesReponse] = await Promise.all([
-      fetch("http://127.0.0.1:8000/api/menu", { method: "GET" }),
-      fetch("http://127.0.0.1:8000/api/theme", { method: "GET" }),
-      fetch("http://127.0.0.1:8000/api/allergene", { method: "GET" }),
-      fetch("http://127.0.0.1:8000/api/regime", { method: "GET" })
+      fetch(API_URL + "/menu", { method: "GET" }),
+      fetch(API_URL + "/theme", { method: "GET" }),
+      fetch(API_URL + "/allergene", { method: "GET" }),
+      fetch(API_URL + "/regime", { method: "GET" })
     ]);
 
     if (!menusReponse.ok) {
@@ -235,6 +243,7 @@ chargerMenusPublics();
 document.getElementById('filtre-theme').addEventListener('change', function () { afficherMenusPublics(); });
 document.getElementById('filtre-allergene').addEventListener('change', function () { afficherMenusPublics(); });
 document.getElementById('filtre-regime-alimentaire').addEventListener('change', function () { afficherMenusPublics(); });
+document.getElementById('filtre-personnes').addEventListener('input', function () { afficherMenusPublics(); });
 
 // Les 2 curseurs ne doivent jamais se croiser (le curseur "min" ne peut pas
 // dépasser le curseur "max", et inversement).
@@ -259,6 +268,7 @@ document.getElementById('btn-reinitialiser-filtres').addEventListener('click', f
   document.getElementById('filtre-theme').value = '';
   document.getElementById('filtre-allergene').value = '';
   document.getElementById('filtre-regime-alimentaire').value = '';
+  document.getElementById('filtre-personnes').value = '';
   initialiserFiltrePrix();
   afficherMenusPublics();
 });
@@ -292,6 +302,11 @@ document.getElementById('menus-grille').addEventListener('click', function (e) {
   document.getElementById('menuDetailModalTitre').textContent = menu.titleMenu;
   document.getElementById('menuDetailModalPhoto').src = menu.photoMenu || MENUS_IMAGE_PLACEHOLDER;
   document.getElementById('menuDetailModalDescription').textContent = menu.description || '';
+
+  // Conditions du menu mises bien en évidence (en haut de la fenêtre, encadré orange).
+  var conditionsWrap = document.getElementById('menuDetailModalConditionsWrap');
+  document.getElementById('menuDetailModalConditions').textContent = menu.conditions || '';
+  conditionsWrap.classList.toggle('d-none', !menu.conditions);
   document.getElementById('menuDetailModalMin').textContent = menu.nombrePersonneMinimum;
 
   var prix = parseFloat(menu.prixParPersonne);
@@ -347,6 +362,9 @@ document.getElementById('btn-commander-depuis-details').addEventListener('click'
 
 // Menu pour lequel une commande est en cours de saisie.
 let menuCommandeCourant = null;
+// Dernier détail de prix calculé par l'API (null tant que l'adresse n'est pas valide).
+let devisCourant = null;
+let minuteurDevis = null;
 
 function commandeMasquerMessages() {
   document.getElementById('commandeModalError').classList.add('d-none');
@@ -360,59 +378,127 @@ function commandeAfficherErreur(message) {
   document.getElementById('commandeModalSuccess').classList.add('d-none');
 }
 
-// Réduction de 10% si nombrePersonne >= (minimum du menu + 5) — même règle
-// qu'appliquée côté API à la confirmation (voir CommandeController::new()),
-// affichée ici en aperçu avant l'envoi de la commande.
+function euros(montant) {
+  return Number(montant).toFixed(2).replace('.', ',') + ' €';
+}
+
+// Aperçu immédiat du prix du menu (réduction de 10 % si >= minimum + 5 personnes),
+// puis demande du détail exact à l'API (frais de livraison calculés depuis l'adresse).
 function commandeMettreAJourPrixEstime() {
+  if (!menuCommandeCourant) return;
   var nombre = parseInt(document.getElementById('commande-nombre-personne').value, 10) || 0;
-  var prixUnitaire = menuCommandeCourant ? parseFloat(menuCommandeCourant.prixParPersonne) : 0;
-  if (isNaN(prixUnitaire)) prixUnitaire = 0;
+  var prixUnitaire = parseFloat(menuCommandeCourant.prixParPersonne) || 0;
 
-  var reductionApplicable = !!menuCommandeCourant && nombre >= (menuCommandeCourant.nombrePersonneMinimum + 5);
-  if (reductionApplicable) prixUnitaire *= 0.9;
+  var reductionApplicable = nombre >= (menuCommandeCourant.nombrePersonneMinimum + 5);
+  if (reductionApplicable) prixUnitaire = Math.round(prixUnitaire * 0.9 * 100) / 100;
 
-  var total = prixUnitaire * nombre;
-  document.getElementById('commande-prix-estime').textContent = total.toFixed(2);
+  document.getElementById('commande-recap-detail-menu').textContent = nombre + ' pers. x ' + euros(prixUnitaire);
+  document.getElementById('commande-recap-menu').textContent = euros(prixUnitaire * nombre);
+  document.getElementById('commande-reduction-info').classList.toggle('d-none', !reductionApplicable);
 
-  var infoReduction = document.getElementById('commande-reduction-info');
-  if (infoReduction) infoReduction.classList.toggle('d-none', !reductionApplicable);
+  devisCourant = null;
+  document.getElementById('commande-recap-livraison').textContent = '…';
+  document.getElementById('commande-recap-detail-livraison').textContent = '';
+  document.getElementById('commande-prix-estime').textContent = '…';
+
+  clearTimeout(minuteurDevis);
+  minuteurDevis = setTimeout(demanderDevis, 600);
+}
+
+// Appel API : POST /api/commande/devis -> détail exact (c'est aussi ce calcul qui sera appliqué à la commande).
+async function demanderDevis() {
+  var adresse = document.getElementById('commande-adresse').value.trim();
+  var nombre = parseInt(document.getElementById('commande-nombre-personne').value, 10) || 0;
+  var livraisonEl = document.getElementById('commande-recap-livraison');
+  var totalEl = document.getElementById('commande-prix-estime');
+
+  if (adresse.length < 8 || nombre < menuCommandeCourant.nombrePersonneMinimum) {
+    livraisonEl.textContent = '—';
+    totalEl.textContent = '—';
+    document.getElementById('commande-recap-detail-livraison').textContent = adresse.length < 8 ? "(saisissez l'adresse)" : '';
+    return;
+  }
+
+  try {
+    const reponse = await fetch(API_URL + "/commande/devis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-AUTH-TOKEN": localStorage.getItem('token') },
+      body: JSON.stringify({ menuId: menuCommandeCourant.id, nombrePersonne: nombre, adresse: adresse })
+    });
+    const data = await reponse.json().catch(() => null);
+
+    if (!reponse.ok) {
+      livraisonEl.textContent = '—';
+      totalEl.textContent = '—';
+      document.getElementById('commande-recap-detail-livraison').textContent = '(' + messageErreurApi(data, 'adresse à vérifier') + ')';
+      return;
+    }
+
+    devisCourant = data;
+    document.getElementById('commande-recap-menu').textContent = euros(data.prixMenu);
+    document.getElementById('commande-recap-detail-livraison').textContent = data.livraison.horsBordeaux
+      ? '(' + data.livraison.ville + ', ' + String(data.livraison.distanceKm).replace('.', ',') + ' km)'
+      : '(Bordeaux)';
+    livraisonEl.textContent = data.livraison.montant > 0 ? euros(data.livraison.montant) : 'Offerte';
+    totalEl.textContent = euros(data.total);
+  } catch (error) {
+    console.error(error);
+    livraisonEl.textContent = '—';
+    totalEl.textContent = '—';
+  }
 }
 
 function ouvrirCommandeModal(menu) {
-  // Il faut être connecté pour commander : la commande est rattachée au
-  // compte connecté côté API (X-AUTH-TOKEN obligatoire).
+  // Visiteur non connecté : il doit se connecter (ou créer un compte) avant de commander.
   const token = localStorage.getItem('token');
   if (!token) {
-    alert('Connectez-vous pour passer commande.');
+    alert('Connectez-vous ou créez un compte pour passer commande.');
     naviguerSPA('/connexion');
     return;
   }
 
+  if (menu.quantiteRestante !== null && menu.quantiteRestante !== undefined && menu.quantiteRestante <= 0) {
+    alert("Ce menu n'est plus disponible à la commande (stock épuisé).");
+    return;
+  }
+
   menuCommandeCourant = menu;
+  devisCourant = null;
   commandeMasquerMessages();
+  document.getElementById('btn-confirmer-commande').disabled = false;
 
   document.getElementById('commandeModalTitre').textContent = 'Commander : ' + menu.titleMenu;
+  var demain = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  document.getElementById('commande-date-prestation').min = demain;
   document.getElementById('commande-date-prestation').value = '';
   document.getElementById('commande-heure-livraison').value = '';
   document.getElementById('commande-nombre-personne').value = menu.nombrePersonneMinimum;
   document.getElementById('commande-nombre-personne').min = menu.nombrePersonneMinimum;
   document.getElementById('commande-min-personnes-info').textContent = menu.nombrePersonneMinimum + ' personnes minimum pour ce menu.';
-  commandeMettreAJourPrixEstime();
+
+  // Rappel des conditions du menu, à accepter explicitement.
+  var conditionsWrap = document.getElementById('commande-conditions-wrap');
+  document.getElementById('commande-conditions').textContent = menu.conditions || '';
+  document.getElementById('commande-conditions-ok').checked = false;
+  conditionsWrap.classList.toggle('d-none', !menu.conditions);
 
   document.getElementById('commande-adresse').value = '';
   document.getElementById('commande-adresse-info').textContent = '';
-  preRemplirAdresseCommande();
+  ['commande-nom', 'commande-prenom', 'commande-email', 'commande-gsm'].forEach(function (id) {
+    document.getElementById(id).value = '';
+  });
+  preRemplirInfosClient();
+  commandeMettreAJourPrixEstime();
 
   var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('commandeModal'));
   modal.show();
 }
 
-// Appel API : GET /api/account/me — si une adresse est déjà enregistrée sur le
-// profil, elle pré-remplit le champ (toujours modifiable) ; sinon le champ
-// reste vide et devient obligatoire à la saisie (voir validation au submit).
-async function preRemplirAdresseCommande() {
+// Appel API : GET /api/account/me — nom, prénom, email et GSM du client sont repris de son compte,
+// ainsi que son adresse (modifiable) pour le lieu de livraison.
+async function preRemplirInfosClient() {
   try {
-    const reponse = await fetch("http://127.0.0.1:8000/api/account/me", {
+    const reponse = await fetch(API_URL + "/account/me", {
       method: "GET",
       headers: { "X-AUTH-TOKEN": localStorage.getItem('token') }
     });
@@ -420,12 +506,16 @@ async function preRemplirAdresseCommande() {
     if (!reponse.ok) return;
 
     const user = await reponse.json();
-    var champAdresse = document.getElementById('commande-adresse');
-    var info = document.getElementById('commande-adresse-info');
+    document.getElementById('commande-nom').value = user.lastName || '';
+    document.getElementById('commande-prenom').value = user.firstName || '';
+    document.getElementById('commande-email').value = user.email || '';
+    document.getElementById('commande-gsm').value = user.phoneNumber || '';
 
-    if (user.adresse) {
+    var champAdresse = document.getElementById('commande-adresse');
+    if (user.adresse && !champAdresse.value) {
       champAdresse.value = user.adresse;
-      if (info) info.textContent = 'Adresse reprise depuis votre profil, modifiable si besoin.';
+      document.getElementById('commande-adresse-info').textContent = 'Adresse reprise depuis votre profil, modifiable si besoin.';
+      commandeMettreAJourPrixEstime();
     }
   } catch (error) {
     console.error(error);
@@ -433,6 +523,7 @@ async function preRemplirAdresseCommande() {
 }
 
 document.getElementById('commande-nombre-personne').addEventListener('input', commandeMettreAJourPrixEstime);
+document.getElementById('commande-adresse').addEventListener('input', commandeMettreAJourPrixEstime);
 
 document.getElementById('btn-confirmer-commande').addEventListener('click', function () {
   if (!menuCommandeCourant) return;
@@ -447,6 +538,10 @@ document.getElementById('btn-confirmer-commande').addEventListener('click', func
     commandeAfficherErreur('La date de prestation est obligatoire.');
     return;
   }
+  if (!heureLivraison) {
+    commandeAfficherErreur("L'heure de livraison souhaitée est obligatoire.");
+    return;
+  }
   if (!adresse) {
     commandeAfficherErreur("L'adresse de livraison est obligatoire.");
     return;
@@ -455,16 +550,29 @@ document.getElementById('btn-confirmer-commande').addEventListener('click', func
     commandeAfficherErreur('Le nombre de personnes minimum pour ce menu est de ' + menuCommandeCourant.nombrePersonneMinimum + '.');
     return;
   }
+  if (menuCommandeCourant.conditions && !document.getElementById('commande-conditions-ok').checked) {
+    commandeAfficherErreur('Merci de lire et d\'accepter les conditions du menu.');
+    return;
+  }
+  if (!devisCourant) {
+    commandeAfficherErreur("Le prix n'a pas encore pu être calculé : vérifiez l'adresse de livraison.");
+    demanderDevis();
+    return;
+  }
 
+  // Aucun prix n'est envoyé : c'est l'API qui calcule tout (menu, réduction, livraison).
   const payload = {
     menuId: menuCommandeCourant.id,
     datePrestation: datePrestation,
-    heureLivraison: heureLivraison || null,
+    heureLivraison: heureLivraison,
     adresse: adresse,
     nombrePersonne: nombrePersonne
   };
 
-  fetch("http://127.0.0.1:8000/api/commande", {
+  var bouton = document.getElementById('btn-confirmer-commande');
+  bouton.disabled = true;
+
+  fetch(API_URL + "/commande", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -473,24 +581,31 @@ document.getElementById('btn-confirmer-commande').addEventListener('click', func
     body: JSON.stringify(payload)
   })
     .then(async (reponse) => {
+      const data = await reponse.json().catch(() => null);
       if (!reponse.ok) {
-        const data = await reponse.json().catch(() => null);
-        commandeAfficherErreur((data && data.message) || "Une erreur est survenue lors de la commande.");
+        commandeAfficherErreur(messageErreurApi(data, "Une erreur est survenue lors de la commande."));
+        bouton.disabled = false;
         return;
       }
 
       const succes = document.getElementById('commandeModalSuccess');
-      succes.textContent = 'Commande envoyée ! Nous vous recontacterons pour la confirmer.';
+      succes.textContent = 'Commande n°' + data.id + ' enregistrée (' + euros(data.montantTotal) + ') ! Un email de confirmation vous a été envoyé. Vous pouvez suivre votre commande depuis votre profil.';
       succes.classList.remove('d-none');
+
+      // Le stock affiché du menu diminue.
+      if (menuCommandeCourant.quantiteRestante !== null && menuCommandeCourant.quantiteRestante !== undefined) {
+        menuCommandeCourant.quantiteRestante--;
+      }
 
       setTimeout(function () {
         var modal = bootstrap.Modal.getInstance(document.getElementById('commandeModal'));
         if (modal) modal.hide();
-      }, 1800);
+      }, 3500);
     })
     .catch((error) => {
       console.error(error);
       commandeAfficherErreur("Une erreur est survenue lors de la commande.");
+      bouton.disabled = false;
     });
 });
 

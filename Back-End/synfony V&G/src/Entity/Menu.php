@@ -31,6 +31,11 @@ class Menu
     #[ORM\Column(nullable: true)]
     private ?int $quantite_restante = null;
 
+    // Conditions du menu (délai de commande, précautions de stockage...) :
+    // affichées bien en évidence sur la vue détaillée et rappelées dans le mail de confirmation.
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $conditions = null;
+
     #[ORM\Column(type: Types::BLOB, nullable: true)]
     private $photo_menu = null;
 
@@ -200,6 +205,18 @@ class Menu
     public function removeRegimeAlimentaire(Regime $regime): static
     {
         $this->regimesAlimentaires->removeElement($regime);
+
+        return $this;
+    }
+
+    public function getConditions(): ?string
+    {
+        return $this->conditions;
+    }
+
+    public function setConditions(?string $conditions): static
+    {
+        $this->conditions = $conditions;
 
         return $this;
     }

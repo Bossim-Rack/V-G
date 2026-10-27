@@ -1,0 +1,8 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Confirmez votre adresse email</h1>
+    <p>Bonjour {{ user.firstName }},</p>
+    <p>Voici un nouveau lien pour confirmer votre adresse email et activer votre compte :</p>
+    {% include 'emails/_bouton.html.twig' with {lien: lien, texte: 'Confirmer mon adresse email'} %}
+    <p style="font-size:13px;color:#6b6b6b;">Ce lien est valable 48 heures et remplace les liens envoyés précédemment.</p>
+{% endblock %}

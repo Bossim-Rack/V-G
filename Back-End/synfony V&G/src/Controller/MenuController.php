@@ -7,6 +7,7 @@ use App\Repository\MenuRepository;
 use App\Repository\PlatRepository;
 use App\Repository\RegimeRepository;
 use App\Repository\ThemeRepository;
+use App\Service\StatsMongoService;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,6 +25,7 @@ class MenuController extends AbstractController
         private PlatRepository $platRepository,
         private ThemeRepository $themeRepository,
         private RegimeRepository $regimeRepository,
+        private StatsMongoService $statsMongo,
     ) {
     }
 
@@ -51,6 +53,7 @@ class MenuController extends AbstractController
             'prixParPersonne' => $menu->getPrixParPersonne(),
             'description' => $menu->getDescription(),
             'quantiteRestante' => $menu->getQuantiteRestante(),
+            'conditions' => $menu->getConditions(),
             'photoMenu' => $photo,
             'plats' => array_values(array_map(static fn ($plat) => [
                 'id' => $plat->getId(),
@@ -117,6 +120,7 @@ class MenuController extends AbstractController
      *             @OA\Property(property="prixParPersonne", type="number", format="float", example=38.00),
      *             @OA\Property(property="description", type="string", example="Menu raffiné, haut de gamme."),
      *             @OA\Property(property="quantiteRestante", type="integer", example=10),
+     *             @OA\Property(property="conditions", type="string", example="À commander au moins 7 jours avant la prestation. À conserver au frais."),
      *             @OA\Property(property="photoMenu", type="string", example="data:image/png;base64,iVBORw0KGgo..."),
      *             @OA\Property(property="plats", type="array", @OA\Items(type="integer")),
      *             @OA\Property(property="themes", type="array", @OA\Items(type="integer"))
@@ -135,6 +139,7 @@ class MenuController extends AbstractController
         $menu->setPrixParPersonne((string) ($data['prixParPersonne'] ?? '0'));
         $menu->setDescription($data['description'] ?? null);
         $menu->setQuantiteRestante(isset($data['quantiteRestante']) ? (int) $data['quantiteRestante'] : null);
+        $menu->setConditions(trim((string) ($data['conditions'] ?? '')) ?: null);
 
         if (!empty($data['photoMenu'])) {
             $menu->setPhotoMenu($data['photoMenu']);
@@ -183,6 +188,7 @@ class MenuController extends AbstractController
 
         $data = json_decode($request->getContent(), true) ?? [];
 
+        $ancienTitre = $menu->getTitleMenu();
         if (array_key_exists('titleMenu', $data)) {
             $menu->setTitleMenu($data['titleMenu']);
         }
@@ -197,6 +203,9 @@ class MenuController extends AbstractController
         }
         if (array_key_exists('quantiteRestante', $data)) {
             $menu->setQuantiteRestante($data['quantiteRestante'] !== null ? (int) $data['quantiteRestante'] : null);
+        }
+        if (array_key_exists('conditions', $data)) {
+            $menu->setConditions(trim((string) $data['conditions']) ?: null);
         }
         if (!empty($data['photoMenu'])) {
             $menu->setPhotoMenu($data['photoMenu']);
@@ -227,6 +236,11 @@ class MenuController extends AbstractController
         }
 
         $this->manager->flush();
+
+        if ($menu->getTitleMenu() !== $ancienTitre) {
+            // Les statistiques (MongoDB) affichent le titre à jour.
+            $this->statsMongo->renommerMenu($menu->getId(), (string) $menu->getTitleMenu());
+        }
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
@@ -263,8 +277,16 @@ class MenuController extends AbstractController
     {
         $menu = $this->repository->findOneBy(['id' => $id]);
         if ($menu) {
-            $this->manager->remove($menu);
-            $this->manager->flush();
+            try {
+                $this->manager->remove($menu);
+                $this->manager->flush();
+            } catch (\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) {
+                // Des commandes référencent ce menu : on ne peut pas le supprimer sans perdre l'historique.
+                return new JsonResponse(
+                    ['message' => 'Ce menu a déjà été commandé : il ne peut pas être supprimé. Passez son stock à 0 pour le retirer de la vente.'],
+                    Response::HTTP_CONFLICT
+                );
+            }
 
             return new JsonResponse(null, Response::HTTP_NO_CONTENT);
         }

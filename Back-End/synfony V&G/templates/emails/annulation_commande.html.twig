@@ -1,0 +1,11 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Votre commande a été annulée</h1>
+    <p>Bonjour {{ commande.user.firstName }},</p>
+    <p>Votre commande n°{{ commande.id }} (<strong>{{ commande.menu.titleMenu }}</strong>) prévue le {{ commande.datePrestation ? commande.datePrestation|date('d/m/Y') : '-' }} a été annulée.</p>
+    {% if commande.motifAnnulation %}
+        <p><strong>Motif :</strong> {{ commande.motifAnnulation }}</p>
+    {% endif %}
+    <p>Pour toute question, n'hésitez pas à nous contacter.</p>
+    <p>Julie &amp; José</p>
+{% endblock %}

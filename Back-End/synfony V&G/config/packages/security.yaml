@@ -3,6 +3,10 @@ security:
     # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+    # l'administrateur hérite des droit employé
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_EMPLOYE]
+
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
         # used to reload user from session & other features (e.g. switch_user)
@@ -18,6 +22,8 @@ security:
             lazy: true
             stateless: true
             provider: app_user_provider
+            # Bloque les comptes désactivés et les emails non confirmés (voir App\Security\UserChecker)
+            user_checker: App\Security\UserChecker
             custom_authenticator: App\Security\ApiTokenAuthenticator
             json_login:
                 check_path: app_api_login
@@ -31,9 +37,14 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
+     # --- Routes publiques ---
      - { path: ^/api/registration, roles: PUBLIC_ACCESS }
      - { path: ^/api/login, roles: PUBLIC_ACCESS }
      - { path: ^/api/forgot-password, roles: PUBLIC_ACCESS }
+     - { path: ^/api/reset-password, roles: PUBLIC_ACCESS }
+     - { path: ^/api/verify-email, roles: PUBLIC_ACCESS }
+     - { path: ^/api/resend-verification, roles: PUBLIC_ACCESS }
+     - { path: ^/api/contact, roles: PUBLIC_ACCESS, methods: [POST] }
      - { path: ^/api/doc, roles: PUBLIC_ACCESS }
      - { path: ^/api/horraires, roles: PUBLIC_ACCESS, methods: [GET] }
      - { path: ^/api/avis/publies, roles: PUBLIC_ACCESS, methods: [GET] }
@@ -41,7 +52,14 @@ security:
      - { path: ^/api/theme, roles: PUBLIC_ACCESS, methods: [GET] }
      - { path: ^/api/allergene, roles: PUBLIC_ACCESS, methods: [GET] }
      - { path: ^/api/regime, roles: PUBLIC_ACCESS, methods: [GET] }
-     - { path: ^/api/user/create-employe, roles: ROLE_ADMIN }
+     # --- Gestion du catalogue : employés et administrateurs uniquement ---
+     - { path: ^/api/(menu|plat|theme|allergene|regime|horraires), roles: ROLE_EMPLOYE, methods: [POST, PUT, PATCH, DELETE] }
+     # --- Administration ---
+     - { path: ^/api/user/count-clients, roles: ROLE_EMPLOYE }
+     - { path: ^/api/user, roles: ROLE_ADMIN }
+     - { path: ^/api/stats, roles: ROLE_ADMIN }
+     - { path: ^/api/(role|restaurant), roles: ROLE_ADMIN }
+     # --- Tout le reste de l'API : utilisateur connecté ---
      - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

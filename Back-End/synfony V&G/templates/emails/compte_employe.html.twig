@@ -1,0 +1,9 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Votre compte employé a été créé</h1>
+    <p>Bonjour {{ user.firstName }},</p>
+    <p>Un compte employé vient d'être créé pour vous sur l'application Vite &amp; Gourmand.</p>
+    <p><strong>Identifiant :</strong> {{ user.email }}</p>
+    <p>Pour des raisons de sécurité, votre mot de passe n'est pas indiqué dans ce mail : <strong>rapprochez-vous de l'administrateur</strong> pour l'obtenir.</p>
+    {% include 'emails/_bouton.html.twig' with {lien: lienConnexion, texte: 'Accéder à la connexion'} %}
+{% endblock %}

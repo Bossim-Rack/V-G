@@ -4,17 +4,24 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use DateTimeImmutable;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Ignore;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
+/**
+ * Groupes de validation utilisés :
+ *  - Default      : champs toujours contrôlés (nom, prénom, email, format du téléphone...)
+ *  - registration : champs obligatoires à l'inscription d'un client (GSM + adresse postale)
+ *  - password     : contrôle du mot de passe EN CLAIR ($plainPassword), avant hashage
+ */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[Assert\Callback(callback: 'validatePasswordStrength')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    /** 10 caractères minimum, au moins 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial. */
+    public const PASSWORD_MIN_LENGTH = 10;
+
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: "IDENTITY")]
     #[ORM\Column(type: "integer")]
@@ -34,7 +41,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     )]
     private ?string $firstName = null;
 
-
     #[ORM\Column(length: 64)]
     #[Assert\NotBlank(message: "Le nom est obligatoire.")]
     #[Assert\Length(
@@ -50,9 +56,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $lastName = null;
 
     #[ORM\Column(length: 10, nullable: true)]
+    #[Assert\NotBlank(message: "Le numéro de GSM est obligatoire.", groups: ['registration'])]
     #[Assert\Regex(
-    pattern: "/^0[67]\d{8}$/",
-    message: "Le numéro de téléphone doit être un numéro de mobile français valide (ex : 0612345678)."
+        pattern: "/^0[67]\d{8}$/",
+        message: "Le numéro de téléphone doit être un numéro de mobile français valide (ex : 0612345678)."
     )]
     private ?string $phoneNumber = null;
 
@@ -60,9 +67,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Assert\Length(max: 255, maxMessage: "Les allergies ne peuvent pas dépasser {{ limit }} caractères.")]
     private ?string $allergy = null;
 
-    // Facultative à l'inscription : reprise automatiquement pour pré-remplir
-    // l'adresse de livraison lors d'un passage de commande (voir CommandeController).
+    // Obligatoire à l'inscription ("adresse mail et postale"), reprise ensuite
+    // pour pré-remplir l'adresse de livraison lors d'une commande.
     #[ORM\Column(length: 255, nullable: true)]
+    #[Assert\NotBlank(message: "L'adresse postale est obligatoire.", groups: ['registration'])]
     #[Assert\Length(max: 255, maxMessage: "L'adresse ne peut pas dépasser {{ limit }} caractères.")]
     private ?string $adresse = null;
 
@@ -84,15 +92,51 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $updatedAt = null;
 
-    /** @var string|null The hashed password */
+    /** @var string|null Le mot de passe HASHÉ (jamais le mot de passe en clair) */
     #[ORM\Column]
-    #[Assert\NotBlank(message: "Le mot de passe est obligatoire.")]
-    #[Assert\Length(min: 8, minMessage: "Le mot de passe doit contenir au moins {{ limit }} caractères.")]
     private ?string $password = null;
+
+    /**
+     * Mot de passe en clair, uniquement en mémoire (jamais enregistré en base).
+     * C'est lui qui est validé, puis hashé dans $password par le contrôleur.
+     */
+    #[Assert\NotBlank(message: "Le mot de passe est obligatoire.", groups: ['password'])]
+    #[Assert\Length(
+        min: self::PASSWORD_MIN_LENGTH,
+        minMessage: "Le mot de passe doit contenir au moins {{ limit }} caractères.",
+        groups: ['password']
+    )]
+    #[Assert\Regex(pattern: '/[a-z]/', message: "Le mot de passe doit contenir au moins une minuscule.", groups: ['password'])]
+    #[Assert\Regex(pattern: '/[A-Z]/', message: "Le mot de passe doit contenir au moins une majuscule.", groups: ['password'])]
+    #[Assert\Regex(pattern: '/\d/', message: "Le mot de passe doit contenir au moins un chiffre.", groups: ['password'])]
+    #[Assert\Regex(pattern: '/[^a-zA-Z0-9]/', message: "Le mot de passe doit contenir au moins un caractère spécial.", groups: ['password'])]
+    private ?string $plainPassword = null;
 
     #[ORM\ManyToOne(inversedBy: 'users')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?role $role = null;
+    private ?Role $role = null;
+
+    // Adresse email confirmée via le lien reçu par mail à l'inscription.
+    #[ORM\Column(options: ['default' => false])]
+    private bool $isVerified = false;
+
+    // Un administrateur peut rendre un compte (employé) inutilisable sans le supprimer.
+    #[ORM\Column(options: ['default' => true])]
+    private bool $isActive = true;
+
+    // On ne stocke que l'empreinte SHA-256 des jetons envoyés par mail :
+    // une fuite de la base ne permet pas de réutiliser un lien.
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $emailVerificationTokenHash = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $emailVerificationExpiresAt = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $resetPasswordTokenHash = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $resetPasswordExpiresAt = null;
 
     /** @throws \Exception */
     public function __construct()
@@ -177,6 +221,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    #[Ignore]
     public function getApiToken(): ?string
     {
         return $this->apiToken;
@@ -185,6 +230,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setApiToken(string $apiToken): static
     {
         $this->apiToken = $apiToken;
+
+        return $this;
+    }
+
+    /** Génère un nouveau jeton d'API : toutes les sessions ouvertes avec l'ancien sont coupées. */
+    public function regenerateApiToken(): static
+    {
+        $this->apiToken = bin2hex(random_bytes(20));
 
         return $this;
     }
@@ -208,18 +261,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /** @see UserInterface */
     public function getRoles(): array
     {
-    $roles = ['ROLE_USER'];
+        $roles = ['ROLE_USER'];
 
-    if ($this->role) {
-        if ($this->role->getLibelle() === 'Admin') {
-            $roles[] = 'ROLE_ADMIN';
+        if ($this->role) {
+            if ($this->role->getLibelle() === 'Admin') {
+                $roles[] = 'ROLE_ADMIN';
+            }
+            if ($this->role->getLibelle() === 'Employé') {
+                $roles[] = 'ROLE_EMPLOYE';
+            }
         }
-        if ($this->role->getLibelle() === 'Employé') {
-            $roles[] = 'ROLE_EMPLOYE';
-        }
-    }
 
-    return array_unique($roles);
+        return array_unique($roles);
     }
 
     public function setRoles(array $roles): static
@@ -230,9 +283,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /** @see PasswordAuthenticatedUserInterface */
+    #[Ignore]
     public function getPassword(): string
     {
-        return $this->password;
+        return (string) $this->password;
     }
 
     public function setPassword(string $password): static
@@ -242,38 +296,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * Reprend la même logique de "force du mot de passe" que le front (inscription.js) :
-     * longueur >= 8, majuscule + minuscule, chiffre, caractère spécial => au moins 3 critères sur 4.
-     *
-     * IMPORTANT : cette validation doit être appelée AVANT le hashage du mot de passe,
-     * sinon c'est le bordel
-     */
-    public function validatePasswordStrength(ExecutionContextInterface $context, mixed $payload): void
+    #[Ignore]
+    public function getPlainPassword(): ?string
     {
-        if (null === $this->password) {
-            return;
-        }
+        return $this->plainPassword;
+    }
 
-        $score = 0;
-        if (strlen($this->password) >= 8) {
-            $score++;
-        }
-        if (preg_match('/[a-z]/', $this->password) && preg_match('/[A-Z]/', $this->password)) {
-            $score++;
-        }
-        if (preg_match('/\d/', $this->password)) {
-            $score++;
-        }
-        if (preg_match('/[^a-zA-Z0-9]/', $this->password)) {
-            $score++;
-        }
+    public function setPlainPassword(?string $plainPassword): static
+    {
+        $this->plainPassword = $plainPassword;
 
-        if ($score < 3) {
-            $context->buildViolation('Le mot de passe est trop faible : mélangez majuscules, minuscules, chiffres et caractères spéciaux.')
-                ->atPath('password')
-                ->addViolation();
-        }
+        return $this;
     }
 
     public function getCreatedAt(): ?DateTimeImmutable
@@ -300,6 +333,70 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): static
+    {
+        $this->isVerified = $isVerified;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    #[Ignore]
+    public function getEmailVerificationTokenHash(): ?string
+    {
+        return $this->emailVerificationTokenHash;
+    }
+
+    #[Ignore]
+    public function getEmailVerificationExpiresAt(): ?DateTimeImmutable
+    {
+        return $this->emailVerificationExpiresAt;
+    }
+
+    public function setEmailVerificationToken(?string $tokenHash, ?DateTimeImmutable $expiresAt): static
+    {
+        $this->emailVerificationTokenHash = $tokenHash;
+        $this->emailVerificationExpiresAt = $expiresAt;
+
+        return $this;
+    }
+
+    #[Ignore]
+    public function getResetPasswordTokenHash(): ?string
+    {
+        return $this->resetPasswordTokenHash;
+    }
+
+    #[Ignore]
+    public function getResetPasswordExpiresAt(): ?DateTimeImmutable
+    {
+        return $this->resetPasswordExpiresAt;
+    }
+
+    public function setResetPasswordToken(?string $tokenHash, ?DateTimeImmutable $expiresAt): static
+    {
+        $this->resetPasswordTokenHash = $tokenHash;
+        $this->resetPasswordExpiresAt = $expiresAt;
+
+        return $this;
+    }
+
     /**
      * Returning a salt is only needed, if you are not using a modern
      * hashing algorithm (e.g. bcrypt or sodium) in your security.yaml.
@@ -314,14 +411,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /** @see UserInterface */
     public function eraseCredentials(): void
     {
+        $this->plainPassword = null;
     }
 
-    public function getRole(): ?role
+    public function getRole(): ?Role
     {
         return $this->role;
     }
 
-    public function setRole(?role $role): static
+    public function setRole(?Role $role): static
     {
         $this->role = $role;
 

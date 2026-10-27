@@ -11,19 +11,24 @@
                     <div class="cx-body p-4">
                         <form id="connexion-form">
                             <div class="mb-3">
-                                <label for="identifiant" class="form-label">Identifiant / Email :</label> 
+                                <label for="ins-Email" class="form-label">Identifiant / Email :</label> 
                                 <div class="mb-3"><input type="email" name="email" id="ins-Email" class="form-control" required></div>
                                 
                             </div>
                             <div class="mb-3">
-                                <label for="Password" class="form-label">Mot de passe :</label>
+                                <label for="ins-Password" class="form-label">Mot de passe :</label>
                                 <div class="contain-Password-input"> 
                                     <input type="password" id="ins-Password" name="Password" class="form-control" required>
-                                    <button type="button" class="btn-hide-password" id="btn-hide-Password"><i class="bi bi-eye"></i></button>
+                                    <button type="button" class="btn-hide-password" id="btn-hide-Password" aria-label="Afficher ou masquer le mot de passe"><i class="bi bi-eye"></i></button>
                                 </div>
 
                             </div>
                         </form>
+                        <div class="alert alert-danger d-none" id="cx-erreur" role="alert"></div>
+                        <div class="alert alert-success d-none" id="cx-succes" role="status"></div>
+                        <p class="text-center d-none" id="cx-renvoyer-wrap">
+                            <button type="button" class="btn btn-link p-0" id="btn-renvoyer-lien">Renvoyer le lien de confirmation</button>
+                        </p>
                         <div class="text-center">
                         <button type="button" id="btn-cx-form" class=" btn btn-cx-form">Se connecter </button>
 

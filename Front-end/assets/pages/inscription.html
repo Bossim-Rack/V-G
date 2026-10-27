@@ -14,49 +14,59 @@
 
               <div class="row g-3 mb-3">
                 <div class="col-6">
-                  <label for="nom" class="form-label">Nom :</label>
+                  <label for="ins-Nom" class="form-label">Nom :</label>
                   <input type="text" id="ins-Nom" name="nom" class="form-control" required>
                 </div>
                 <div class="col-6">
-                  <label for="prenom" class="form-label">Prénom :</label>
+                  <label for="ins-PreNom" class="form-label">Prénom :</label>
                   <input type="text" id="ins-PreNom" name="prenom" class="form-control" required>
                 </div>
               </div>
 
               <div class="mb-3">
-                <label for="email" class="form-label">Adresse mail :</label>
+                <label for="ins-Email" class="form-label">Adresse mail :</label>
                 <input type="email" id="ins-Email" name="email" class="form-control" required>
               </div>
 
               <div class="mb-3">
-                <label for="telephone" class="form-label">N° téléphone :</label>
-                <input type="tel" id="ins-Telephone" name="telephone" class="form-control" required>
+                <label for="ins-Telephone" class="form-label">N° de GSM :</label>
+                <input type="tel" id="ins-Telephone" name="telephone" class="form-control" placeholder="06 12 34 56 78" autocomplete="tel" required>
               </div>
 
               <div class="mb-3">
-                <label for="adresse" class="form-label">Adresse (facultatif) :</label>
-                <input type="text" id="ins-Adresse" name="adresse" class="form-control" placeholder="Numéro, rue, ville, code postal">
-                <small class="text-muted">Elle pourra être utilisée pour pré-remplir vos futures commandes.</small>
+                <label for="ins-Adresse" class="form-label">Adresse postale :</label>
+                <input type="text" id="ins-Adresse" name="adresse" class="form-control" placeholder="Numéro, rue, code postal, ville" autocomplete="street-address" required>
+                <small class="text-muted">Elle sera utilisée pour pré-remplir vos futures commandes.</small>
               </div>
 
               <div class="mb-3">
-                <label for="Password" class="form-label">Mot de passe :</label>
+                <label for="ins-Password" class="form-label">Mot de passe :</label>
                 <div class="contain-Password-input">
                     <input type="password" id="ins-Password" name="Password" class="form-control" required>
-                    <button type="button" class="btn-hide-password" id="btn-hide-Password"><i class="bi bi-eye"></i></button>
+                    <button type="button" class="btn-hide-password" id="btn-hide-Password" aria-label="Afficher ou masquer le mot de passe"><i class="bi bi-eye"></i></button>
                 </div>
                 <div id="strength-bar" class="ins-strength"> </div>
+                <ul class="small text-muted mb-0 mt-2 ps-3" id="ins-password-regles" aria-live="polite">
+                  <li data-critere="longueur">10 caractères minimum</li>
+                  <li data-critere="majuscule">une majuscule</li>
+                  <li data-critere="minuscule">une minuscule</li>
+                  <li data-critere="chiffre">un chiffre</li>
+                  <li data-critere="special">un caractère spécial (! ? @ # ...)</li>
+                </ul>
 
               </div>
 
               <div class="mb-4">
-                <label for="ConfirmPassword" class="form-label">Confirmer le mot de passe :</label>
+                <label for="ins-ConfirmPassword" class="form-label">Confirmer le mot de passe :</label>
                 <div class="contain-ConfirmPassword-input">
                     <input type="password" id="ins-ConfirmPassword" name="ConfirmPassword" class="form-control" required>
-                    <button type="button" class="btn-hide-password" id="btn-hide-ConfirmPassword" ><i class="bi bi-eye"></i></button>
+                    <button type="button" class="btn-hide-password" id="btn-hide-ConfirmPassword" aria-label="Afficher ou masquer la confirmation"><i class="bi bi-eye"></i></button>
                 </div>
 
               </div>
+
+              <div class="alert alert-danger d-none" id="ins-erreur" role="alert"></div>
+              <div class="alert alert-success d-none" id="ins-succes" role="status"></div>
 
               <div class="text-center">
                 <button type="button" class="btn btn-connexion btn-lg" id="btn-inscription-envoie">Inscription</button>

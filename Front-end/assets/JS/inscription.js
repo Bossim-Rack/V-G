@@ -1,46 +1,37 @@
-
 (function () {
 const $ = id => document.getElementById(id);
-function naviguerSPA(chemin) {
-  if (typeof window.route === 'function') {
-    window.route({ preventDefault: function () {}, target: { href: chemin } });
-  } else {
-    window.location.href = chemin;
-  }
-}
+
 //  ================================= //
 //         Btn Hide Password         //
 //  =================================//
-// function switch btn Afficher cacher mdp //
 function togglebtn (input) {
-    if (input.type == 'password') {
-        input.type = 'text'
-    }
-    else {
-        input.type = 'password'
-    }
+    input.type = input.type === 'password' ? 'text' : 'password';
 }
-// 
-//appel de la fonction au clic //
-$('btn-hide-Password').addEventListener("click",() => togglebtn($('ins-Password')))
+$('btn-hide-Password').addEventListener("click",() => togglebtn($('ins-Password')));
 $('btn-hide-ConfirmPassword').addEventListener("click", () => togglebtn($('ins-ConfirmPassword')));
 
 //  ================================= //
-//         Strength bar du mot de passe //
+//    Barre de robustesse + règles    //
 //  =================================//
-
 function updatestrengthBar (level){
     const bar = $('strength-bar');
     bar.className = 'ins-strength';
-    if (level >0 ) bar.classList.add('s'+level);
+    if (level > 0) bar.classList.add('s' + level);
+}
+
+// Coche visuellement chaque règle respectée (même règle que le back : verifierMotDePasse dans config.js)
+function majReglesMotDePasse(resultat) {
+    document.querySelectorAll('#ins-password-regles li').forEach(function (li) {
+        const ok = resultat.criteres[li.dataset.critere];
+        li.classList.toggle('text-success', ok);
+        li.classList.toggle('text-muted', !ok);
+    });
 }
 
 //  ================================= //
 //         Remplissage formulaire     //
 //  =================================//
-// instance chaque variable //
 const Infos = {
-    
     Nom : $('ins-Nom'),
     PreNom : $('ins-PreNom'),
     Email : $('ins-Email'),
@@ -48,161 +39,101 @@ const Infos = {
     Adresse : $('ins-Adresse'),
     Password : $('ins-Password'),
     Confirm_Password : $('ins-ConfirmPassword')
-    };
+};
+
+function marquer(input, valide) {
+    input.classList.toggle("valid", valide);
+    input.classList.toggle("invalid", !valide);
+}
+
 // chef d'orchestre
 function ValidForm(){
-    ValidateForm_Nom(Infos.Nom);
-    ValidateForm_Nom(Infos.PreNom);
-    ValidateForm_Email(Infos.Email);
-    ValidateForm_Tel(Infos.Tel);
-    ValidateForm_Password(Infos.Password);
-    ValidateForm_Confirm_Password(Infos.Confirm_Password);
-    $('ins-submit').disabled = !isValid();
+    const regexNom = /^[a-zA-ZÀ-ÿ\s\-']+$/; // refuse les caractères spéciaux
+    marquer(Infos.Nom, Infos.Nom.value.trim().length >= 2 && regexNom.test(Infos.Nom.value.trim()));
+    marquer(Infos.PreNom, Infos.PreNom.value.trim().length >= 2 && regexNom.test(Infos.PreNom.value.trim()));
+    marquer(Infos.Email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(Infos.Email.value.trim()));
+    marquer(Infos.Tel, /^0[67]\d{8}$/.test(normaliserTelephone(Infos.Tel.value)));
+    // Adresse : au moins un numéro/une rue + un code postal à 5 chiffres
+    marquer(Infos.Adresse, Infos.Adresse.value.trim().length >= 8 && /\d{5}/.test(Infos.Adresse.value));
+
+    const resultat = verifierMotDePasse(Infos.Password.value);
+    updatestrengthBar(resultat.niveau);
+    majReglesMotDePasse(resultat);
+    marquer(Infos.Password, resultat.valide);
+    marquer(Infos.Confirm_Password, Infos.Confirm_Password.value !== '' && Infos.Confirm_Password.value === Infos.Password.value);
 }
-//  ================================= //
-//         Tout les parametres        //
-//  =================================//
 
-// valide Nom / PreNom
-
-function ValidateForm_Nom (input) {
-    const regex = /^[a-zA-ZÀ-ÿ\s\-']+$/; // refuse les caratere speciaux //
-    if(input.value.length >= 2 && regex.test (input.value.trim()) ){
-        input.classList.add("valid");
-        input.classList.remove("invalid"); 
-    }
-    else{
-        input.classList.remove("valid");
-        input.classList.add("invalid");
-    }
-};
-//              Email Valide 
-function ValidateForm_Email (input){
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if(regex.test(input.value.trim())){
-         input.classList.add("valid");
-         input.classList.remove("invalid"); 
-     }
-     else{
-         input.classList.remove("valid");
-         input.classList.add("invalid");
-     }
-};
-function ValidateForm_Tel (input){
-    const regex = /^0[67]\d{8}$/;
-    const valeur = input.value.replace(/^\+33/,'0');
-    if(regex.test(valeur.trim())){
-        input.classList.add("valid");
-        input.classList.remove("invalid"); 
-     }
-    else{
-         input.classList.remove("valid");
-         input.classList.add("invalid");
-     }
-};
-
-// Niveau du mdp, fonction a part //
-function LevelClassBar(input){
-    let level = 0
-    const regexMaj = /[a-z]/;
-    const regexMin = /[A-Z]/;
-    const regexChiffre = /\d/;
-    const regexSpec = /[^a-zA-Z0-9]/;
-    if (input.length >= 8){ level++};
-    if (regexMaj.test(input) && regexMin.test(input)){level++};
-    if (regexChiffre.test(input)){level++};
-    if (regexSpec.test(input)){level++};
-    return level
+function normaliserTelephone(valeur) {
+    return valeur.replace(/[\s.\-]/g, '').replace(/^\+33/, '0');
 }
- //valide Password
- function ValidateForm_Password(input){
-    const strengh = LevelClassBar(input.value);
-    updatestrengthBar(strengh);
-     if(strengh >= 3 ){
-         input.classList.add("valid");
-         input.classList.remove("invalid"); 
-        }
-    else{
-         input.classList.remove("valid");
-         input.classList.add("invalid");
-        }
-};
- //valide confirm password
- function ValidateForm_Confirm_Password(input){
-     if(input.value === Infos.Password.value){
-         input.classList.add("valid");
-         input.classList.remove("invalid"); 
-     }
-     else{
-         input.classList.remove("valid");
-         input.classList.add("invalid");
-     }
- };
-
-//  ================================= //
-//         Appel des listener        //
-//  =================================//
-
-Infos.Nom.addEventListener("keyup",() => ValidForm());
-Infos.PreNom.addEventListener("keyup",() => ValidForm());
-Infos.Email.addEventListener("keyup",() => ValidForm());
-Infos.Tel.addEventListener("keyup",() => ValidForm());
-Infos.Password.addEventListener("keyup",() => ValidForm());
-Infos.Confirm_Password.addEventListener("input", () => ValidForm());
-
-//  ================================= //
-//         Controle du bouton         //
-//          de soumission            //
-//  =================================//
 
 function isValid(){
-    return (
-        Infos.Nom.classList.contains('valid') &&
-        Infos.PreNom.classList.contains('valid') &&
-        Infos.Email.classList.contains('valid') &&
-        Infos.Tel.classList.contains('valid') &&
-        Infos.Password.classList.contains('valid') &&
-        Infos.Confirm_Password.classList.contains('valid')
-    );
+    return Object.values(Infos).every(function (input) { return input.classList.contains('valid'); });
 }
-// $('ins-submit').addEventListener('click',() => {
-//     $('ins-submit').disabled =true ;
-//     $('ins-submit').textContent = 'Inscription';
-//     InscriptionUtilisateur();
-//     });
+
+Object.values(Infos).forEach(function (input) {
+    input.addEventListener("input", ValidForm);
+});
+
+//  ================================= //
+//              Messages              //
+//  =================================//
+function afficherErreur(message) {
+    $('ins-succes').classList.add('d-none');
+    $('ins-erreur').textContent = message;
+    $('ins-erreur').classList.remove('d-none');
+}
+
+function afficherSucces(message) {
+    $('ins-erreur').classList.add('d-none');
+    $('ins-succes').textContent = message;
+    $('ins-succes').classList.remove('d-none');
+}
+
 //  ================================= //
 //                API                //
 //  =================================//
 $('btn-inscription-envoie').addEventListener("click", () => Envoie());
 
-function Envoie() {
-    const myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
+async function Envoie() {
+    ValidForm();
+    if (!isValid()) {
+        afficherErreur("Merci de corriger les champs en rouge : tous les champs sont obligatoires et le mot de passe doit respecter toutes les règles.");
+        return;
+    }
 
-    const raw = JSON.stringify({
-        "firstName": Infos.PreNom.value,
-        "lastName": Infos.Nom.value,
-        "phoneNumber" : Infos.Tel.value,
-        "adresse" : Infos.Adresse.value || null,
-        "email": Infos.Email.value,
-        "password": Infos.Password.value
-    });
+    const bouton = $('btn-inscription-envoie');
+    bouton.disabled = true;
 
-    const requestOptions = {
-        method: "POST",
-        headers: myHeaders,
-        body: raw,
-        redirect: "follow"
-    };
+    try {
+        const reponse = await fetch(API_URL + "/registration", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                "firstName": Infos.PreNom.value.trim(),
+                "lastName": Infos.Nom.value.trim(),
+                "phoneNumber": normaliserTelephone(Infos.Tel.value),
+                "adresse": Infos.Adresse.value.trim(),
+                "email": Infos.Email.value.trim(),
+                "password": Infos.Password.value
+            })
+        });
+        const data = await reponse.json().catch(() => null);
 
-    fetch("http://127.0.0.1:8000/api/registration", requestOptions)
-        .then((response) => response.json())
-        .then((result) => {
-            console.log(result);
-            localStorage.setItem('token', result.apiToken);
-            naviguerSPA("/connexion");
-        })
-        .catch((error) => console.error(error));
+        if (!reponse.ok) {
+            afficherErreur(messageErreurApi(data, "L'inscription a échoué."));
+            bouton.disabled = false;
+            return;
+        }
+
+        // Pas de connexion automatique : le compte doit d'abord être confirmé via le lien reçu par mail.
+        $('inscriptionForm').querySelectorAll('input').forEach(function (input) { input.disabled = true; });
+        bouton.classList.add('d-none');
+        afficherSucces(data.message + " (pensez à regarder dans vos spams)");
+    } catch (error) {
+        console.error(error);
+        afficherErreur("Impossible de contacter le serveur.");
+        bouton.disabled = false;
+    }
 }
 })();

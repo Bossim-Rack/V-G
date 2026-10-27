@@ -1,0 +1,11 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Retour du matériel prêté</h1>
+    <p>Bonjour {{ commande.user.firstName }},</p>
+    <p>Du matériel vous a été prêté pour votre commande n°{{ commande.id }} ({{ commande.menu.titleMenu }}).</p>
+    <div style="border-left:4px solid #c0392b;background:#fdecea;padding:12px 16px;margin:16px 0;">
+        Conformément à nos conditions générales de vente, <strong>si le matériel n'est pas restitué sous 10 jours ouvrés, des frais de 600 € vous seront facturés.</strong>
+    </div>
+    <p>Pour organiser la restitution du matériel, merci de <strong>prendre contact avec nous</strong> (formulaire de contact du site ou par téléphone).</p>
+    <p>Merci,<br>Julie &amp; José</p>
+{% endblock %}

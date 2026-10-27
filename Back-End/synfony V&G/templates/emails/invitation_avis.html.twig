@@ -1,0 +1,9 @@
+{% extends 'emails/base.html.twig' %}
+{% block contenu %}
+    <h1 style="font-size:20px;margin-top:0;">Votre avis nous intéresse</h1>
+    <p>Bonjour {{ commande.user.firstName }},</p>
+    <p>Votre commande n°{{ commande.id }} (<strong>{{ commande.menu.titleMenu }}</strong>) est maintenant terminée. Nous espérons que tout vous a plu !</p>
+    <p>Connectez-vous à votre compte pour donner votre avis sur cette commande (une note de 1 à 5 et un commentaire) : il nous aide énormément.</p>
+    {% include 'emails/_bouton.html.twig' with {lien: lienProfil, texte: 'Donner mon avis'} %}
+    <p>Merci pour votre confiance,<br>Julie &amp; José</p>
+{% endblock %}

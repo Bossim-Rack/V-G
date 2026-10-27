@@ -1,5 +1,5 @@
 import Route from "./Route.js";
-import { allRoutes, websiteName } from "./allRoutes.js";
+import { allRoutes, websiteName } from "./Allroutes.js";
 // Création d'une route pour la page 404 (page introuvable)
 const route404 = new Route("404", "Page introuvable", "/pages/404.html");
 //chargement du header et footer
@@ -72,6 +72,16 @@ const routeEvent = (event) => {
 window.onpopstate = LoadContentPage;
 // Assignation de la fonction routeEvent à la propriété route de la fenêtre
 window.route = routeEvent;
+
+// Liens reçus par mail (ex : /?page=/verifier-email&token=...) : on passe toujours par la
+// racine du site, qui sert index.html quel que soit le serveur web, puis on affiche la bonne page.
+const parametresInitiaux = new URLSearchParams(window.location.search);
+const pageDemandee = parametresInitiaux.get("page");
+if (pageDemandee && pageDemandee.startsWith("/") && !pageDemandee.startsWith("//")) {
+  parametresInitiaux.delete("page");
+  const suite = parametresInitiaux.toString();
+  window.history.replaceState({}, "", pageDemandee + (suite ? "?" + suite : ""));
+}
 
 // Chargement du contenu de la page au chargement initial
 LoadContentPage();

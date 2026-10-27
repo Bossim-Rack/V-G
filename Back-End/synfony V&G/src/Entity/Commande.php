@@ -3,12 +3,40 @@
 namespace App\Entity;
 
 use App\Repository\CommandeRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: CommandeRepository::class)]
 class Commande
 {
+    public const STATUT_EN_ATTENTE = 'En attente';
+    public const STATUT_ACCEPTEE = 'Accepté';
+    public const STATUT_EN_PREPARATION = 'En préparation';
+    public const STATUT_EN_LIVRAISON = 'En cours de livraison';
+    public const STATUT_LIVREE = 'Livré';
+    public const STATUT_ATTENTE_MATERIEL = 'En attente du retour de matériel';
+    public const STATUT_TERMINEE = 'Terminée';
+    public const STATUT_ANNULEE = 'Annulée';
+
+    public const STATUTS = [
+        self::STATUT_EN_ATTENTE,
+        self::STATUT_ACCEPTEE,
+        self::STATUT_EN_PREPARATION,
+        self::STATUT_EN_LIVRAISON,
+        self::STATUT_LIVREE,
+        self::STATUT_ATTENTE_MATERIEL,
+        self::STATUT_TERMINEE,
+        self::STATUT_ANNULEE,
+    ];
+
+    // Statuts après lesquels plus rien ne bouge.
+    public const STATUTS_FINAUX = [self::STATUT_TERMINEE, self::STATUT_ANNULEE];
+
+    // Moyen par lequel l'employé a joint le client avant de modifier/annuler sa commande.
+    public const MODES_CONTACT = ['GSM', 'Email'];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -51,6 +79,23 @@ class Commande
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
+
+    // Renseignés uniquement quand un employé annule la commande.
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $motif_annulation = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $mode_contact = null;
+
+    /** Suivi : chaque changement de statut, avec sa date et son heure. */
+    #[ORM\OneToMany(mappedBy: 'commande', targetEntity: CommandeHistorique::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['changedAt' => 'ASC', 'id' => 'ASC'])]
+    private Collection $historiques;
+
+    public function __construct()
+    {
+        $this->historiques = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -199,5 +244,59 @@ class Commande
         $this->user = $user;
 
         return $this;
+    }
+
+    public function getMotifAnnulation(): ?string
+    {
+        return $this->motif_annulation;
+    }
+
+    public function setMotifAnnulation(?string $motif_annulation): static
+    {
+        $this->motif_annulation = $motif_annulation;
+
+        return $this;
+    }
+
+    public function getModeContact(): ?string
+    {
+        return $this->mode_contact;
+    }
+
+    public function setModeContact(?string $mode_contact): static
+    {
+        $this->mode_contact = $mode_contact;
+
+        return $this;
+    }
+
+    /** @return Collection<int, CommandeHistorique> */
+    public function getHistoriques(): Collection
+    {
+        return $this->historiques;
+    }
+
+    /**
+     * Change le statut ET trace le changement dans l'historique (suivi de commande).
+     */
+    public function changerStatut(string $statut, ?string $commentaire = null, ?User $auteur = null): static
+    {
+        $this->statut = $statut;
+
+        $historique = (new CommandeHistorique())
+            ->setCommande($this)
+            ->setStatut($statut)
+            ->setCommentaire($commentaire)
+            ->setAuteur($auteur)
+            ->setChangedAt(new \DateTimeImmutable());
+        $this->historiques->add($historique);
+
+        return $this;
+    }
+
+    /** Montant total TTC : prix par personne (réduction incluse) x nb de personnes + livraison. */
+    public function getMontantTotal(): float
+    {
+        return round(((float) $this->prix_menu) * ((int) $this->nombre_personne) + (float) $this->prix_livraison, 2);
     }
 }
