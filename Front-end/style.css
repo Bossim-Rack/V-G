@@ -126,7 +126,7 @@ body {
 .hero-section {
   font-family: 'Fraunces',serif;
   min-height: 500px;
-  background-image: linear-gradient(rgba(15, 46, 56, 0.5), rgba(15, 46, 56, 0.5)), url("/Assets/images/Restaurant.jpg");
+  background-image: linear-gradient(rgba(15, 46, 56, 0.5), rgba(15, 46, 56, 0.5)), url("/assets/images/Restaurant.jpg");
   background-size: cover;
   background-position: center;
   color: var(--Ecume);

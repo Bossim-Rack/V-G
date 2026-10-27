@@ -23,7 +23,15 @@ when@test:
             dbname_suffix: '_test%env(default::TEST_TOKEN)%'
 
 when@prod:
+    parameters:
+        # Certificat utilisé pour chiffrer la connexion à MySQL en ligne (Aiven impose SSL).
+        env(MYSQL_SSL_CA): '/etc/ssl/certs/ca-certificates.crt'
+
     doctrine:
+        dbal:
+            options:
+                !php/const PDO::MYSQL_ATTR_SSL_CA: '%env(MYSQL_SSL_CA)%'
+                !php/const PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT: false
         orm:
             auto_generate_proxy_classes: false
             proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'

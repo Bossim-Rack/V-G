@@ -26,5 +26,12 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    # Envoi des mails par l'API HTTP de Brevo (MAILER_DSN=brevo+api://CLE@default)
+    App\Mailer\BrevoTransportFactory:
+        parent: mailer.transport_factory.abstract
+        autowire: false
+        autoconfigure: false
+        tags: ['mailer.transport_factory']
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
