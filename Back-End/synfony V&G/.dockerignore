@@ -1,9 +1,0 @@
-.git
-vendor/
-var/
-.env.local
-.env.*.local
-backup.sql
-*.sql
-composer-setup.php
-studi-restaurant-view.png

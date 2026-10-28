@@ -1,4 +1,6 @@
 # Image de production de l'API Symfony (utilisée par Render)
+# Placé à la racine du dépôt car Render n'accepte pas d'espace ni de "&" dans "Root Directory" :
+# c'est ce fichier qui va chercher le code dans "Back-End/synfony V&G".
 FROM php:8.3-apache
 
 # Extensions PHP : MySQL (pdo_mysql), MongoDB (statistiques), intl, zip, opcache
@@ -21,18 +23,18 @@ ENV APP_ENV=prod \
 WORKDIR /var/www/html
 
 # Dépendances d'abord (mises en cache par Docker tant que composer.lock ne change pas)
-COPY composer.json composer.lock symfony.lock ./
+COPY ["Back-End/synfony V&G/composer.json", "Back-End/synfony V&G/composer.lock", "Back-End/synfony V&G/symfony.lock", "./"]
 RUN composer install --prefer-dist --no-interaction --no-scripts --no-autoloader
 
-# Puis le code
-COPY . .
+# Puis le code de l'API
+COPY ["Back-End/synfony V&G/", "./"]
 RUN composer dump-autoload --optimize \
     && mkdir -p var \
     && chown -R www-data:www-data var
 
 # Apache sert le dossier public/ de Symfony
-COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ["Back-End/synfony V&G/docker/apache.conf", "/etc/apache2/sites-available/000-default.conf"]
+COPY ["Back-End/synfony V&G/docker/entrypoint.sh", "/usr/local/bin/entrypoint.sh"]
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80

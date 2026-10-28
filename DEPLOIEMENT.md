@@ -65,19 +65,18 @@ brevo+api://xkeysib-VOTRE_CLE@default
 
 ## 4. API Symfony sur Render
 
-Fichiers utilisés (dans `Back-End/synfony V&G/`) :
+Fichiers utilisés :
 
-- `Dockerfile` : image PHP 8.3 + Apache + extensions `pdo_mysql`, `mongodb`, `intl`
-- `docker/apache.conf` : Apache sert le dossier `public/`
-- `docker/entrypoint.sh` : à chaque démarrage → cache, création/mise à jour de la base, synchro MongoDB, lancement d'Apache
-- `.dockerignore`
+- `Dockerfile` et `.dockerignore` (**à la racine du dépôt**) : image PHP 8.3 + Apache + extensions `pdo_mysql`, `mongodb`, `intl`. Ils sont à la racine car Render n'accepte pas d'espace ni de `&` dans « Root Directory » : c'est le Dockerfile qui va chercher le code dans `Back-End/synfony V&G`.
+- `Back-End/synfony V&G/docker/apache.conf` : Apache sert le dossier `public/`
+- `Back-End/synfony V&G/docker/entrypoint.sh` : à chaque démarrage → cache, création/mise à jour de la base, synchro MongoDB, lancement d'Apache
 
 Étapes :
 
 1. Sur https://render.com : **New → Web Service → Build and deploy from a Git repository**, choisir le dépôt GitHub.
 2. Réglages :
    - **Branch** : `main`
-   - **Root Directory** : `Back-End/synfony V&G`
+   - **Root Directory** : laisser **vide** (le `Dockerfile` est à la racine)
    - **Runtime / Language** : `Docker`
    - **Instance type** : `Free`
    - **Health Check Path** (Advanced) : `/api/menu`

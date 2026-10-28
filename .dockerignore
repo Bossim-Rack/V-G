@@ -1,0 +1,11 @@
+# Seul le dossier de l'API est utile à l'image Docker
+.git
+Front-end
+Suivie Projet
+Back-End/synfony V&G/vendor
+Back-End/synfony V&G/var
+Back-End/synfony V&G/.env.local
+Back-End/synfony V&G/.env.*.local
+Back-End/synfony V&G/*.sql
+Back-End/synfony V&G/composer-setup.php
+Back-End/synfony V&G/studi-restaurant-view.png
