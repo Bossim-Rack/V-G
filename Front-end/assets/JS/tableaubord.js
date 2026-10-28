@@ -1850,6 +1850,9 @@ chargerHoraires();
 // Ajoute une ligne dans le tableau des horaires sans recharger la page
 function creerLigneHoraire(horaire) {
   const tbody = document.getElementById('horaires-tbody');
+  // On enlève la ligne "Aucun horaire renseigné." si c'est le premier horaire ajouté
+  const ligneVide = tbody.querySelector('.profil-empty-hint');
+  if (ligneVide) ligneVide.closest('tr').remove();
   const tr = document.createElement('tr');
   remplirLigneHoraire(tr, horaire);
   tbody.appendChild(tr);
