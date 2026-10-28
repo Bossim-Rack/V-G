@@ -13,7 +13,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Les variables d'environnement de Render doivent être visibles par Symfony ($_ENV)
-RUN { echo 'variables_order = "EGPCS"'; echo 'expose_php = Off'; echo 'opcache.validate_timestamps = 0'; } > /usr/local/etc/php/conf.d/app.ini
+RUN { echo 'variables_order = "EGPCS"'; echo 'expose_php = Off'; echo 'opcache.validate_timestamps = 0'; echo 'date.timezone = Europe/Paris'; } > /usr/local/etc/php/conf.d/app.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV APP_ENV=prod \
