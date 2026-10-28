@@ -2,8 +2,10 @@
 
 namespace App\Command;
 
+use App\Entity\Allergene;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Repository\AllergeneRepository;
 use App\Repository\RoleRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -18,7 +20,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * php bin/console app:init-database
- * Prépare une base vide pour la mise en ligne : crée les tables, les 3 rôles et le compte administrateur.
+ * Prépare une base vide pour la mise en ligne : crée les tables, les 3 rôles, les 14 allergènes et le compte administrateur.
  * Sans danger si la base existe déjà : on ne recrée rien de ce qui est présent.
  */
 #[AsCommand(name: 'app:init-database', description: 'Crée les tables, les rôles et le compte admin sur une base vide')]
@@ -26,9 +28,16 @@ class InitDatabaseCommand extends Command
 {
     private const ROLES = ['Admin', 'Employé', 'Client'];
 
+    // Les 14 allergènes à déclaration obligatoire (règlement européen INCO)
+    private const ALLERGENES = [
+        'Gluten', 'Crustacés', 'Œufs', 'Poissons', 'Arachides', 'Soja', 'Lait',
+        'Fruits à coque', 'Céleri', 'Moutarde', 'Graines de sésame', 'Sulfites', 'Lupin', 'Mollusques',
+    ];
+
     public function __construct(
         private EntityManagerInterface $manager,
         private RoleRepository $roleRepository,
+        private AllergeneRepository $allergeneRepository,
         private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
     ) {
@@ -64,7 +73,16 @@ class InitDatabaseCommand extends Command
         }
         $this->manager->flush();
 
-        // 3. Le compte administrateur (José), à partir des variables ADMIN_EMAIL et ADMIN_PASSWORD
+        // 3. Les allergènes
+        foreach (self::ALLERGENES as $libelle) {
+            if (!$this->allergeneRepository->findOneBy(['libelle' => $libelle])) {
+                $this->manager->persist((new Allergene())->setLibelle($libelle));
+                $io->text('Allergène créé : ' . $libelle);
+            }
+        }
+        $this->manager->flush();
+
+        // 4. Le compte administrateur (José), à partir des variables ADMIN_EMAIL et ADMIN_PASSWORD
         $roleAdmin = $this->roleRepository->findOneBy(['libelle' => 'Admin']);
         $email = mb_strtolower(trim((string) ($_SERVER['ADMIN_EMAIL'] ?? $_ENV['ADMIN_EMAIL'] ?? getenv('ADMIN_EMAIL') ?: '')));
         $motDePasse = (string) ($_SERVER['ADMIN_PASSWORD'] ?? $_ENV['ADMIN_PASSWORD'] ?? getenv('ADMIN_PASSWORD') ?: '');

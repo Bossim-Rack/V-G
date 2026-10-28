@@ -38,7 +38,7 @@ function creerCarteMenuPublic(menu) {
       '<div class="menu-card-footer d-flex justify-content-between align-items-center">' +
         '<div>' +
           '<p class="menu-card-personnes mb-1"><i class="bi bi-people-fill"></i> ' + menu.nombrePersonneMinimum + ' personnes minimum</p>' +
-          '<p class="menu-card-prix mb-0">' + prixTexte + ' euros</p>' +
+          '<p class="menu-card-prix mb-0">' + prixTexte + ' € / pers.</p>' +
         '</div>' +
         '<div class="menu-card-actions">' +
           '<button type="button" class="btn btn-details js-details-menu" data-id="' + menu.id + '">Details</button>' +
@@ -169,7 +169,6 @@ function initialiserFiltrePrix() {
 
   var borneMin = prix.length ? Math.floor(Math.min.apply(null, prix)) : 0;
   var borneMax = prix.length ? Math.ceil(Math.max.apply(null, prix)) : 100;
-  if (borneMax <= borneMin) borneMax = borneMin + 1;
 
   sliderMin.min = borneMin;
   sliderMin.max = borneMax;
@@ -195,7 +194,7 @@ function majAffichagePrix() {
   var min = parseFloat(sliderMin.value);
   var max = parseFloat(sliderMax.value);
 
-  if (valeurs) valeurs.textContent = min + ' € - ' + max + ' €';
+  if (valeurs) valeurs.textContent = min === max ? min + ' €' : min + ' € - ' + max + ' €';
 
   if (fill && borneMax > borneMin) {
     var pctMin = ((min - borneMin) / (borneMax - borneMin)) * 100;
