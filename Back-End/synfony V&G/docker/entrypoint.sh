@@ -13,6 +13,9 @@ if [ -n "$MYSQL_CA_CERT" ]; then
     export MYSQL_SSL_CA=/etc/ssl/certs/mysql-ca.pem
 fi
 
+# Diagnostic : affiche à quelle base MySQL on se connecte (sans le mot de passe)
+php -r '$u = parse_url(getenv("DATABASE_URL") ?: ""); echo "Base MySQL utilisée : ", ($u["host"] ?? "DATABASE_URL NON DÉFINIE sur Render"), ":", ($u["port"] ?? "?"), PHP_EOL;'
+
 # Cache de production
 php bin/console cache:clear --no-interaction
 

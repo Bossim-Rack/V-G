@@ -4,7 +4,7 @@
 // ===================================================================== //
 var API_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ? "http://127.0.0.1:8000/api"        // API Symfony en local
-  : "https://VOTRE-API-EN-LIGNE/api";  // <-- à remplacer par l'URL de l'API déployée
+  : "https://v-g.onrender.com/api";    // API Symfony en ligne (Render)
 
 // Protège l'affichage des textes saisis par les utilisateurs (noms, adresses, commentaires...)
 // avant de les insérer avec innerHTML : évite l'injection de HTML/JavaScript (faille XSS).
