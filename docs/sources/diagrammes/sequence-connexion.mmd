@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor U as Utilisateur
+    participant F as Front
+    participant A as API Symfony (firewall)
+    participant M as MySQL
+
+    U->>F: Saisit email + mot de passe
+    F->>A: POST /api/login (JSON)
+    A->>M: Cherche l'utilisateur par email
+    M-->>A: Utilisateur (hash du mot de passe)
+    Note over A: Vérifie le hash (bcrypt) puis UserChecker : compte actif ? email confirmé ?
+    alt Identifiants valides
+        A-->>F: 200 { apiToken, roles }
+        F->>F: Stocke le jeton et les rôles (localStorage), adapte le menu
+    else Refusé
+        A-->>F: 401 + message (identifiants, email non confirmé, compte désactivé)
+    end
+    U->>F: Ouvre « Mon profil »
+    F->>A: GET /api/account/me (en-tête X-AUTH-TOKEN)
+    A->>M: Retrouve l'utilisateur par son jeton
+    Note over A: access_control : rôle suffisant pour la route ?
+    A-->>F: 200 données du compte (jamais le mot de passe ni le jeton)

@@ -6,10 +6,26 @@
   --Sauge:#7FA69C;
   --Sable:#F2E8D5;
   --Ecume:#FAF6EE;
+  /* Nuances ajoutées pour l'accessibilité (contraste RGAA / WCAG AA d'au moins 4,5:1 pour le texte) */
+  --Corail-texte:#A84A22;  /* corail foncé : texte sur fond clair (Sable, Écume) */
+  --Corail-clair:#F4A988;  /* corail clair : texte sur fond Pétrole */
+  /* Liens Bootstrap en Pétrole au lieu du bleu par défaut (contraste insuffisant sur Écume) */
+  --bs-link-color-rgb: 27, 75, 90;
+  --bs-link-hover-color-rgb: 15, 46, 56;
 }
+
+/* Lien "Aller au contenu" : visible uniquement au clavier */
+.lien-evitement:focus {
+  position: fixed; top: 8px; left: 8px; z-index: 2000;
+  background-color: var(--Encre); color: var(--Ecume);
+  padding: 8px 16px; border-radius: 20px;
+}
+#main-page:focus { outline: none; }
 
 body {
   background-color: var(--Sable);
+  /* Police des textes courants (charte graphique) : Work Sans, chargée dans index.html */
+  font-family: 'Work Sans', system-ui, sans-serif;
 }
 /* header  */
 .navbar {
@@ -59,7 +75,7 @@ body {
 
 .btn-connexion {
   background-color: var(--Corail);
-  color: var(--ecume);
+  color: var(--Encre);
   border-radius: 20px;
   padding: 6px 20px;
   font-size: 0.9rem;
@@ -99,7 +115,7 @@ body {
 }
 
 .footer-subtitle {
-  color: var(--Corail);
+  color: var(--Corail-clair);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -163,7 +179,7 @@ body {
 }
 
 .savoir-faire-title {
-  color: var(--sauge);
+  color: var(--Sable);
   font-family: 'Fraunces', serif;
 }
 
@@ -225,7 +241,7 @@ body {
   text-decoration: underline;
 }
 .infos-entreprise-ml {
-  font-family: 'ibm',sans-serif;
+  font-family: 'IBM Plex Mono', monospace;
   gap: 10px;
   display: flex;
 }
@@ -250,8 +266,8 @@ body {
   background-color: var(--Petrol);
 }
 
-.inscription-title {
-  color: var(--Corail);
+.inscription-title, .cx-title {
+  color: var(--Corail-clair);
   font-family: 'Fraunces', serif;
   margin: 0;
 }
@@ -334,7 +350,7 @@ body {
 ================================*/
 .btn-redirection-inscription-form, .btn-cx-form {
   background-color: var(--Corail);
-  color: var(--Ecume);
+  color: var(--Encre);
   border-radius: 20px;
   padding: 6px 20px;
   font-size: 0.9rem;
@@ -378,7 +394,7 @@ body {
 }
 
 .menus-banner-title h1 {
-  color: var(--ecume);
+  color: var(--Encre);
   font-family: 'Fraunces', serif;
   text-decoration: underline;
   margin: 0;
@@ -480,14 +496,14 @@ body {
 }
 
 .menu-card-title {
-  color: var(--Petrol);
+  color: var(--Encre);
   font-family: 'Fraunces', serif;
   font-size: 1.3rem;
   margin-bottom: 8px;
 }
 
 .menu-card-text {
-  color: var(--Petrol);
+  color: var(--Encre);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -513,7 +529,7 @@ body {
 
 .btn-details {
   background-color: var(--Corail);
-  color: var(--Ecume);
+  color: var(--Encre);
   border-radius: 20px;
   padding: 6px 16px;
   font-size: 0.85rem;
@@ -543,7 +559,7 @@ body {
 
 .btn-commander:hover {
   background-color: var(--Corail);
-  color: var(--Ecume);
+  color: var(--Encre);
 }
 /* =======================================
               PROFIL
@@ -560,7 +576,7 @@ body {
 }
 .profil-avatar-lg { width:64px; height:64px; font-size:1.4rem; }
 .profil-name { font-family:'Fraunces', serif; color: var(--Encre); }
-.profil-role-badge { background-color: var(--Corail); color: var(--Ecume); border-radius:20px; padding:4px 14px; font-size:.8rem; font-weight:500; }
+.profil-role-badge { background-color: var(--Corail); color: var(--Encre); border-radius:20px; padding:4px 14px; font-size:.8rem; font-weight:500; }
 .profil-meta { color: var(--Petrol); font-size:.85rem; font-family: monospace; }
 
 /* Sidebar de navigation */
@@ -569,15 +585,15 @@ body {
 .profil-nav-link { display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; border-left:3px solid transparent; padding:14px 20px; font-family:'Work Sans', sans-serif; font-size:.95rem; color:var(--Encre); cursor:pointer; }
 .profil-nav-link i { font-size:1rem; width:18px; text-align:center; }
 .profil-nav-link:hover { background-color: var(--Sable); }
-.profil-nav-link.active { background-color: var(--Sable); border-left-color: var(--Corail); color: var(--Corail); font-weight:600; }
-.profil-nav-danger { color:#dc3545; }
+.profil-nav-link.active { background-color: var(--Sable); border-left-color: var(--Corail); color: var(--Corail-texte); font-weight:600; }
+.profil-nav-danger { color:#b02a37; }
 .profil-nav-danger:hover { background-color:#fdecea; }
-.profil-nav-danger.active { background-color:#fdecea; border-left-color:#dc3545; color:#dc3545; }
+.profil-nav-danger.active { background-color:#fdecea; border-left-color:#b02a37; color:#b02a37; }
 
 /* Cartes de contenu */
 .profil-card { background-color: var(--Ecume); border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,.08); }
 .profil-card-header { background-color: var(--Petrol); }
-.profil-card-title { font-family:'Fraunces', serif; color: var(--Corail); font-size:1.2rem; }
+.profil-card-title { font-family:'Fraunces', serif; color: var(--Corail-clair); font-size:1.2rem; }
 .profil-card-body .form-label { color: var(--Encre); font-weight:500; }
 .profil-card-body .form-control { background-color: var(--Ecume); border:1px solid rgba(15,46,56,.15); border-radius:6px; }
 .profil-card-body .form-control:focus { background-color: var(--Ecume); border:1px solid var(--Corail); box-shadow:0 0 0 .2rem rgba(232,134,90,.25); }
@@ -590,8 +606,8 @@ body {
 .commande-details { color: var(--Encre); font-size:.85rem; }
 .commande-prix { color: var(--Encre); font-weight:700; font-family: monospace; }
 .profil-statut { border-radius:20px; padding:4px 12px; font-size:.75rem; font-weight:600; }
-.profil-statut-confirmee { background-color:#28a745; color:#fff; }
-.profil-statut-attente { background-color: var(--Corail); color:#fff; }
+.profil-statut-confirmee { background-color:#1e7e34; color:#fff; }
+.profil-statut-attente { background-color: var(--Corail); color: var(--Encre); }
 .profil-statut-annulee { background-color:#dc3545; color:#fff; }
 .profil-statut-terminee { background-color: var(--Petrol); color:#fff; }
 .profil-statut-encours { background-color:#0d6efd; color:#fff; }
@@ -606,7 +622,7 @@ body {
 .suivi-commande .suivi-date { color:#6c757d; }
 
 /* Conditions d'un menu : toujours bien visibles */
-.menu-conditions, .menu-card-conditions { color:#7a4a00; }
+.menu-conditions, .menu-card-conditions { color:#3D2400; }
 .menu-card-conditions { font-weight:600; }
 
 /* Statistiques administrateur */
@@ -614,7 +630,7 @@ body {
 
 /* Suppression de compte */
 .profil-danger-zone { border:1px dashed #dc3545; border-radius:12px; }
-.profil-danger-title { color:#dc3545; font-family:'Fraunces', serif; }
+.profil-danger-title { color:#b02a37; font-family:'Fraunces', serif; }
 .profil-card-body .form-control[readonly] {
   background-color: var(--Sable);
   border-color: transparent;
@@ -639,11 +655,11 @@ body {
 .dash-role-badge { border-radius:20px; padding:3px 12px; font-size:.75rem; font-weight:600; }
 .dash-role-client { background-color: var(--Sauge); color: var(--Encre); }
 .dash-role-employe { background-color: var(--Petrol); color:#fff; }
-.dash-role-admin { background-color: var(--Corail); color:#fff; }
+.dash-role-admin { background-color: var(--Corail); color: var(--Encre); }
 
 .dash-avis-statut { border-radius:20px; padding:3px 12px; font-size:.75rem; font-weight:600; }
-.dash-avis-attente { background-color: var(--Corail); color:#fff; }
-.dash-avis-publie { background-color:#28a745; color:#fff; }
+.dash-avis-attente { background-color: var(--Corail); color: var(--Encre); }
+.dash-avis-publie { background-color:#1e7e34; color:#fff; }
 .dash-avis-refuse { background-color:#dc3545; color:#fff; }
 
 .dash-icon-btn { background:none; border:none; color: var(--Petrol); font-size:1rem; padding:4px 6px; cursor:pointer; }
@@ -657,7 +673,7 @@ body {
 .profil-card-body .form-select:focus { background-color: var(--Ecume); border:1px solid var(--Corail); box-shadow:0 0 0 .2rem rgba(232,134,90,.25); }
 .profil-card-body .form-control[readonly], .profil-card-body .form-select:disabled { background-color: var(--Sable); color: var(--Petrol); cursor:default; opacity:1; }
 .profil-danger-zone { border:1px dashed #dc3545; border-radius:12px; }
-.profil-danger-title { color:#dc3545; font-family:'Fraunces', serif; }
+.profil-danger-title { color:#b02a37; font-family:'Fraunces', serif; }
 
 .dash-checkbox-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:8px 16px; background-color: var(--Sable); border-radius:8px; padding:14px 16px; }
 .dash-checkbox-list .form-check-input:checked { background-color: var(--Corail); border-color: var(--Corail); }
@@ -669,3 +685,14 @@ body {
 .dash-add-form .form-label { color: var(--Encre); font-weight:500; font-size:.85rem; }
 
 .dash-section-title { font-family:'Fraunces', serif; color: var(--Encre); font-size:1.1rem; }
+
+/* CGV : les titres d'articles sont des h2 (hiérarchie des titres) affichés comme des h4 */
+.article-main-cgv h2 { margin: 0; }
+.footer-subtitle { margin-bottom: .5rem; }
+
+/* Rouge Bootstrap un peu plus foncé : contraste suffisant sur les fonds clairs */
+.btn-outline-danger { --bs-btn-color:#b02a37; --bs-btn-border-color:#b02a37; --bs-btn-hover-bg:#b02a37; --bs-btn-hover-border-color:#b02a37; --bs-btn-active-bg:#b02a37; --bs-btn-active-border-color:#b02a37; }
+.text-danger { color:#b02a37 !important; }
+
+/* Page 404 */
+.cx-title-404 { font-family:'Fraunces', serif; color: var(--Encre); }

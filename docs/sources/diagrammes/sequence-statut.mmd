@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor E as Employé
+    participant F as Front (tableau de bord)
+    participant A as API Symfony
+    participant M as MySQL
+    participant G as MongoDB
+    participant B as Brevo
+    actor C as Client
+
+    E->>F: Choisit le nouveau statut d'une commande
+    F->>A: PUT /api/commande/{id}/statut (X-AUTH-TOKEN)
+    Note over A: ROLE_EMPLOYE requis, statut autorisé, commande non terminée/annulée
+    A->>M: Met à jour le statut + ligne d'historique (date, heure, auteur)
+    A->>G: Met à jour le document de la commande
+    alt « En attente du retour de matériel »
+        A->>B: Mail : matériel à rendre sous 10 jours ouvrés, sinon 600 €
+        B-->>C: Mail de rappel
+    else « Terminée »
+        A->>B: Mail : invitation à donner un avis
+        B-->>C: Mail d'invitation
+    end
+    A-->>F: 200 commande à jour

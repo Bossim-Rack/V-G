@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    actor C as Client
+    participant F as Front (menus.js)
+    participant A as API Symfony
+    participant I as Géocodage IGN
+    participant M as MySQL
+    participant G as MongoDB
+    participant B as Brevo
+
+    C->>F: Clique sur « Commander » (menu pré-rempli)
+    F->>A: POST /api/commande/devis (menu, personnes, adresse)
+    A->>I: Géocode l'adresse
+    I-->>A: Ville + coordonnées
+    A-->>F: Prix menu (remise -10 % si ≥ minimum + 5), livraison, total
+    F-->>C: Détail du prix + conditions du menu à accepter
+    C->>F: Coche les conditions et confirme
+    F->>A: POST /api/commande (X-AUTH-TOKEN)
+    Note over A: Vérifie le jeton, le minimum de personnes, le stock, la date
+    Note over A: Recalcule le prix côté serveur (le prix envoyé par le front est ignoré)
+    A->>M: INSERT commande + historique « En attente », stock - 1
+    A->>G: Upsert du document de la commande (statistiques)
+    A->>B: Mail de confirmation
+    A-->>F: 201 Created (n° et montant)
+    F-->>C: « Commande enregistrée », visible dans Mon profil
