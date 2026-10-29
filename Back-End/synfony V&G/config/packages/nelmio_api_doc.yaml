@@ -1,8 +1,8 @@
 nelmio_api_doc:
     documentation:
         info:
-            title: Restaurant API
-            description: Documentation de l'API Restaurant Studi.
+            title: Vite & Gourmand API
+            description: API du traiteur Vite & Gourmand (menus, commandes, avis, comptes).
             version: 1.0.0
         components:
             securitySchemes:

@@ -1,0 +1,6 @@
+flowchart LR
+    D["Développeur<br/>git push"] --> GH["GitHub<br/>branche main"]
+    GH -- "automatique" --> V["Vercel<br/>publie Front-end/"]
+    GH -- "automatique" --> R["Render<br/>construit l'image Docker"]
+    R --> S["Démarrage du conteneur<br/>(docker/entrypoint.sh)"]
+    S --> L["1. Certificat CA MySQL écrit sur disque<br/>2. cache:clear<br/>3. app:init-database (base vide → tables,<br/>rôles, allergènes, admin)<br/>4. doctrine:migrations:migrate<br/>5. app:stats:sync (MySQL → MongoDB)<br/>6. Apache sert l'API"]

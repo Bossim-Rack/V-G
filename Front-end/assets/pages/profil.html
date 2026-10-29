@@ -50,10 +50,6 @@
               </div>
               <div class="row g-3 mb-3">
                 <div class="col-6">
-                  <!--<label class="form-label">Adresse mail :</label>
-                  <input type="email" id="profil-Email" name="email" class="form-control" readonly>
-
-                  Je veux pas modifier le mail -->
                 </div>
                 <div class="col-6">
                   <label class="form-label" for="profil-Telephone">Téléphone :</label>
@@ -84,26 +80,26 @@
           <div class="profil-card-body p-4">
             <form id="profilPasswordForm">
               <div class="mb-3">
-                <label class="form-label">Mot de passe actuel :</label>
+                <label for="profil-CurrentPassword" class="form-label">Mot de passe actuel :</label>
                 <div class="contain-Password-input">
                   <input type="password" id="profil-CurrentPassword" class="form-control">
-                  <button type="button" class="btn-hide-password" id="btn-hide-CurrentPassword"><i class="bi bi-eye"></i></button>
+                  <button type="button" class="btn-hide-password" id="btn-hide-CurrentPassword" aria-label="Afficher ou masquer le mot de passe actuel"><i class="bi bi-eye"></i></button>
                 </div>
               </div>
               <div class="mb-3">
-                <label class="form-label">Nouveau mot de passe :</label>
+                <label for="profil-NewPassword" class="form-label">Nouveau mot de passe :</label>
                 <div class="contain-Password-input">
                   <input type="password" id="profil-NewPassword" class="form-control">
-                  <button type="button" class="btn-hide-password" id="btn-hide-NewPassword"><i class="bi bi-eye"></i></button>
+                  <button type="button" class="btn-hide-password" id="btn-hide-NewPassword" aria-label="Afficher ou masquer le nouveau mot de passe"><i class="bi bi-eye"></i></button>
                 </div>
                 <div id="profil-strength-bar" class="ins-strength"></div>
                 <small class="text-muted">10 caractères minimum, avec une majuscule, une minuscule, un chiffre et un caractère spécial.</small>
               </div>
               <div class="mb-3">
-                <label class="form-label">Confirmer le nouveau mot de passe :</label>
+                <label for="profil-ConfirmNewPassword" class="form-label">Confirmer le nouveau mot de passe :</label>
                 <div class="contain-Password-input">
                   <input type="password" id="profil-ConfirmNewPassword" class="form-control">
-                  <button type="button" class="btn-hide-password" id="btn-hide-ConfirmNewPassword"><i class="bi bi-eye"></i></button>
+                  <button type="button" class="btn-hide-password" id="btn-hide-ConfirmNewPassword" aria-label="Afficher ou masquer la confirmation"><i class="bi bi-eye"></i></button>
                 </div>
               </div>
               <div class="text-end">
@@ -155,7 +151,7 @@
                   <label class="form-label" for="avis-description">Votre commentaire :</label>
                   <textarea id="avis-description" class="form-control" rows="3" maxlength="255" placeholder="Partagez votre expérience..."></textarea>
                 </div>
-                <p class="text-danger small mb-0 d-none" id="avis-add-error"></p>
+                <p class="text-danger small mb-0 d-none" id="avis-add-error" role="alert"></p>
                 <div class="text-end mt-2">
                   <button type="button" class="btn btn-connexion" id="btn-save-avis">Publier mon avis</button>
                 </div>

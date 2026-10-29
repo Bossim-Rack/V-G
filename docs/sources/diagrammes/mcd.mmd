@@ -1,0 +1,100 @@
+erDiagram
+    ROLE ||--o{ USER : "attribue"
+    USER ||--o{ COMMANDE : "passe"
+    MENU ||--o{ COMMANDE : "est commandé"
+    COMMANDE ||--|{ COMMANDE_HISTORIQUE : "suivi"
+    USER |o--o{ COMMANDE_HISTORIQUE : "auteur du changement"
+    USER ||--o{ AVIS : "rédige"
+    COMMANDE |o--o| AVIS : "est notée par"
+    MENU }o--o{ PLAT : "menu_plat"
+    MENU }o--o{ THEME : "menu_theme"
+    MENU }o--o{ REGIME : "menu_regime"
+    PLAT }o--o{ ALLERGENE : "plat_allergene"
+
+    ROLE {
+        int id PK
+        varchar libelle "Admin, Employé, Client"
+    }
+    USER {
+        int id PK
+        int role_id FK
+        varchar first_name
+        varchar last_name
+        varchar email UK
+        varchar password "hash bcrypt"
+        varchar api_token UK
+        varchar phone_number
+        varchar adresse
+        varchar allergy
+        bool is_verified
+        bool is_active
+        varchar email_verification_token_hash "SHA-256"
+        varchar reset_password_token_hash "SHA-256"
+        datetime created_at
+    }
+    MENU {
+        int id PK
+        varchar title_menu
+        varchar description
+        int nombre_personne_minimum
+        decimal prix_par_personne
+        int quantite_restante "stock"
+        text conditions
+        blob photo_menu
+    }
+    PLAT {
+        int id PK
+        varchar title_plat
+        text description
+        blob photo_plat
+    }
+    THEME {
+        int id PK
+        varchar libelle
+    }
+    REGIME {
+        int id PK
+        varchar libelle
+    }
+    ALLERGENE {
+        int id PK
+        varchar libelle
+    }
+    COMMANDE {
+        int id PK
+        int user_id FK
+        int menu_id FK
+        date date_commande
+        date date_prestation
+        varchar heure_livraison
+        varchar adresse
+        int nombre_personne
+        decimal prix_menu "par personne, remise incluse"
+        decimal prix_livraison
+        varchar statut
+        bool pret_materiel
+        bool restitution_materiel
+        varchar motif_annulation
+        varchar mode_contact "GSM ou Email"
+    }
+    COMMANDE_HISTORIQUE {
+        int id PK
+        int commande_id FK
+        int auteur_id FK
+        varchar statut
+        varchar commentaire
+        datetime changed_at
+    }
+    AVIS {
+        int id PK
+        int user_id FK
+        int commande_id FK "unique"
+        int note "1 à 5"
+        varchar description
+        varchar statut "En attente, Publié, Refusé"
+    }
+    HORRAIRES {
+        int id PK
+        varchar jour
+        varchar heure
+    }

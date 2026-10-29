@@ -1,0 +1,18 @@
+flowchart LR
+    U["Navigateur<br/>(visiteur, client,<br/>employé, admin)"]
+    subgraph Vercel["Vercel"]
+        F["Front<br/>HTML / CSS / JS<br/>Bootstrap, Chart.js"]
+    end
+    subgraph Render["Render (conteneur Docker)"]
+        A["API REST<br/>Symfony 5.4<br/>PHP 8.3 + Apache"]
+    end
+    M[("MySQL 8<br/>Aiven")]
+    G[("MongoDB<br/>Atlas")]
+    B["Brevo<br/>(API d'envoi de mails)"]
+    I["Géoplateforme IGN<br/>(géocodage)"]
+    U -- "HTTPS : pages" --> F
+    U -- "HTTPS : fetch JSON<br/>en-tête X-AUTH-TOKEN" --> A
+    A -- "Doctrine ORM (TLS)" --> M
+    A -- "driver ext-mongodb (TLS)" --> G
+    A -- "HTTPS" --> B
+    A -- "HTTPS" --> I

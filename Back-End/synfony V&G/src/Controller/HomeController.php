@@ -11,6 +11,6 @@ class HomeController extends AbstractController
     #[Route('/', name: 'app_home_index')]
     public function home() : Response
     {
-        return new Response('Bienvenue sur votre accueil !');
+        return new Response("API Vite & Gourmand : la documentation interactive est sur /api/doc");
     }
 }

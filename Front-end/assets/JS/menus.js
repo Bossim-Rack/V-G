@@ -28,7 +28,7 @@ function creerCarteMenuPublic(menu) {
     '<div class="menu-card">' +
       '<img src="' + (menu.photoMenu || MENUS_IMAGE_PLACEHOLDER) + '" alt="' + echapperHtml(menu.titleMenu) + '" class="menu-card-img">' +
       '<div class="menu-card-body">' +
-        '<h3 class="menu-card-title">' + echapperHtml(menu.titleMenu.toUpperCase()) + '</h3>' +
+        '<h2 class="menu-card-title">' + echapperHtml(menu.titleMenu.toUpperCase()) + '</h2>' +
         '<p class="menu-card-text">' + echapperHtml(menu.description || '') + '</p>' +
         (menu.conditions ? '<p class="menu-card-conditions small mb-1"><i class="bi bi-exclamation-triangle-fill"></i> Conditions particulières : voir le détail</p>' : '') +
         ((menu.regimesAlimentaires && menu.regimesAlimentaires.length > 0)

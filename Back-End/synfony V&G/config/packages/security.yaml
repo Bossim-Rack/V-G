@@ -58,7 +58,7 @@ security:
      - { path: ^/api/user/count-clients, roles: ROLE_EMPLOYE }
      - { path: ^/api/user, roles: ROLE_ADMIN }
      - { path: ^/api/stats, roles: ROLE_ADMIN }
-     - { path: ^/api/(role|restaurant), roles: ROLE_ADMIN }
+     - { path: ^/api/role, roles: ROLE_ADMIN }
      # --- Tout le reste de l'API : utilisateur connecté ---
      - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 

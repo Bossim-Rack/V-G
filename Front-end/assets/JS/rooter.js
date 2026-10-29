@@ -1,7 +1,7 @@
 import Route from "./Route.js";
 import { allRoutes, websiteName } from "./Allroutes.js";
 // Création d'une route pour la page 404 (page introuvable)
-const route404 = new Route("404", "Page introuvable", "/pages/404.html");
+const route404 = new Route("404", "Page introuvable", "/assets/pages/404.html");
 //chargement du header et footer
 const loadHeaderFooter = async () => {
   const header = await fetch("/Component/Header.html").then(r => r.text());
@@ -46,27 +46,32 @@ const LoadContentPage = async () => {
   const html = await fetch(actualRoute.pathHtml).then((data) => data.text());
   // Ajout du contenu HTML à l'élément avec l'ID "main-page"
   document.getElementById("main-page").innerHTML = html;
-  // Ajout du contenu JavaScript
-  ;
- if (actualRoute.pathJS != "") {
+  // Ajout du contenu JavaScript (l'ancien script de page est retiré avant)
+  if (actualRoute.pathJS != "") {
     document.querySelectorAll('script[data-page-script]').forEach(s => s.remove());
     var scriptTag = document.createElement("script");
     scriptTag.setAttribute("type", "text/javascript");
     scriptTag.setAttribute("src", actualRoute.pathJS);
-    scriptTag.setAttribute("data-page-script", "true");   // ← AJOUTE CETTE LIGNE
+    scriptTag.setAttribute("data-page-script", "true");
     document.querySelector("body").appendChild(scriptTag);
-}
+  }
   // Changement du titre de la page
   document.title = actualRoute.title + " - " + websiteName;
 };
 // Fonction pour gérer les événements de routage (clic sur les liens)
-const routeEvent = (event) => {
+const routeEvent = async (event) => {
   event = event || window.event;
   event.preventDefault();
+  // On remonte jusqu'au lien : le clic peut venir d'un élément à l'intérieur (ex : le "&" du logo)
+  const lien = event.target.closest("a");
+  if (!lien) return;
   // Mise à jour de l'URL dans l'historique du navigateur
-  window.history.pushState({}, "", event.target.href);
+  window.history.pushState({}, "", lien.href);
   // Chargement du contenu de la nouvelle page
-  LoadContentPage();
+  await LoadContentPage();
+  // Accessibilité : on remonte en haut et le focus passe sur le contenu de la nouvelle page
+  window.scrollTo(0, 0);
+  document.getElementById("main-page").focus({ preventScroll: true });
 };
 // Gestion de l'événement de retour en arrière dans l'historique du navigateur
 window.onpopstate = LoadContentPage;
